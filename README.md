@@ -1,43 +1,26 @@
-# semitexa-media
+# semitexa/media
 
-Image-first media asset management for Semitexa. Provides canonical asset records, metadata extraction, named collections, async variant generation, WebP/JPEG quality presets, tenant-aware quotas, and CDN-ready delivery URLs.
+Image-first media asset management with async variant generation, tenant-aware quotas, and CDN-ready delivery URLs.
 
-## Requirements
+## Purpose
 
-- PHP 8.4+
-- `ext-imagick` (Imagick PHP extension)
-- `semitexa/storage`
-- `semitexa/orm`
-- `semitexa/tenancy`
+Manages media assets from upload through processing to delivery. Provides canonical asset records, metadata extraction (EXIF, dimensions), named collections, async variant generation (thumbnails, WebP, quality presets), and per-tenant quota tracking.
 
-## Getting Started
+## Role in Semitexa
 
-See `docs/GETTING_STARTED.md` for installation and integration guidance.
+Depends on Core, ORM, Storage, and Tenancy. Uses the Scheduler for async variant generation. Storage provides the underlying driver (local or S3/MinIO), while ORM persists asset records and quota usage.
 
-## Worker
+## Key Features
 
-Run the dedicated media variant worker:
+- `ImagickImageProcessor` for image inspection and transformation
+- Async variant generation via Scheduler workers
+- Named collections for logical asset grouping
+- WebP/JPEG quality presets
+- Per-tenant quota tracking and enforcement
+- CDN-ready delivery URL generation
+- ORM-backed asset records (`MediaAssetResource`, `MediaVariantResource`, `MediaQuotaUsageResource`)
+- CLI commands: `media:work`, `media:regenerate`, `media:failed-variants`, `media:quota:recalculate`
 
-```bash
-php bin/semitexa media:work
-php bin/semitexa media:work rabbitmq media
-```
+## Notes
 
-## Operations
-
-```bash
-# Regenerate variants for one asset
-php bin/semitexa media:regenerate <asset-id>
-
-# Regenerate one variant key
-php bin/semitexa media:regenerate <asset-id> --variant=thumb
-
-# Regenerate all assets in a collection
-php bin/semitexa media:regenerate --collection=avatars --tenant=<tenant-id>
-
-# List failed variants
-php bin/semitexa media:failed-variants
-
-# Recalculate quota usage
-php bin/semitexa media:quota:recalculate <tenant-id> --bucket=default
-```
+Requires the `ext-imagick` PHP extension. Variant generation runs asynchronously via dedicated workers to avoid blocking request handling.
