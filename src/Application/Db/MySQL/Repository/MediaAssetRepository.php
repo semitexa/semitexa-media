@@ -13,6 +13,8 @@ use Semitexa\Orm\Uuid\Uuid7;
 #[SatisfiesRepositoryContract(of: MediaAssetRepositoryInterface::class)]
 class MediaAssetRepository extends AbstractRepository implements MediaAssetRepositoryInterface
 {
+    use AssertsExpectedResourceType;
+
     protected function getResourceClass(): string
     {
         return MediaAssetResource::class;
@@ -21,7 +23,7 @@ class MediaAssetRepository extends AbstractRepository implements MediaAssetRepos
     public function findById(int|string $id): ?MediaAssetResource
     {
         if (!is_string($id)) {
-            return null;
+            throw new \InvalidArgumentException('MediaAssetRepository::findById expects a string UUID id.');
         }
 
         return $this->select()
@@ -31,15 +33,7 @@ class MediaAssetRepository extends AbstractRepository implements MediaAssetRepos
 
     public function save(object $resource): void
     {
-        if (!$resource instanceof MediaAssetResource) {
-            throw new \InvalidArgumentException(sprintf(
-                'Expected %s, got %s.',
-                MediaAssetResource::class,
-                $resource::class,
-            ));
-        }
-
-        parent::save($resource);
+        parent::save($this->assertResourceType($resource));
     }
 
     public function findByTenantAndCollection(string $tenantId, string $collectionKey, int $limit = 100): array

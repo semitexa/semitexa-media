@@ -12,6 +12,8 @@ use Semitexa\Orm\Repository\AbstractRepository;
 #[SatisfiesRepositoryContract(of: MediaQuotaUsageRepositoryInterface::class)]
 class MediaQuotaUsageRepository extends AbstractRepository implements MediaQuotaUsageRepositoryInterface
 {
+    use AssertsExpectedResourceType;
+
     protected function getResourceClass(): string
     {
         return MediaQuotaUsageResource::class;
@@ -27,15 +29,7 @@ class MediaQuotaUsageRepository extends AbstractRepository implements MediaQuota
 
     public function save(object $resource): void
     {
-        if (!$resource instanceof MediaQuotaUsageResource) {
-            throw new \InvalidArgumentException(sprintf(
-                'Expected %s, got %s.',
-                MediaQuotaUsageResource::class,
-                $resource::class,
-            ));
-        }
-
-        parent::save($resource);
+        parent::save($this->assertResourceType($resource));
     }
 
     public function incrementUsage(string $tenantId, string $quotaBucket, int $byteSize): void

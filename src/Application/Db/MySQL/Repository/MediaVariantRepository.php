@@ -13,6 +13,8 @@ use Semitexa\Orm\Uuid\Uuid7;
 #[SatisfiesRepositoryContract(of: MediaVariantRepositoryInterface::class)]
 class MediaVariantRepository extends AbstractRepository implements MediaVariantRepositoryInterface
 {
+    use AssertsExpectedResourceType;
+
     protected function getResourceClass(): string
     {
         return MediaVariantResource::class;
@@ -35,15 +37,7 @@ class MediaVariantRepository extends AbstractRepository implements MediaVariantR
 
     public function save(object $resource): void
     {
-        if (!$resource instanceof MediaVariantResource) {
-            throw new \InvalidArgumentException(sprintf(
-                'Expected %s, got %s.',
-                MediaVariantResource::class,
-                $resource::class,
-            ));
-        }
-
-        parent::save($resource);
+        parent::save($this->assertResourceType($resource));
     }
 
     public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariantResource
