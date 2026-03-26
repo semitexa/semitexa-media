@@ -12,6 +12,8 @@ use Semitexa\Orm\Repository\AbstractRepository;
 #[SatisfiesRepositoryContract(of: MediaCollectionRepositoryInterface::class)]
 class MediaCollectionRepository extends AbstractRepository implements MediaCollectionRepositoryInterface
 {
+    use AssertsExpectedResourceType;
+
     protected function getResourceClass(): string
     {
         return MediaCollectionResource::class;
@@ -39,9 +41,9 @@ class MediaCollectionRepository extends AbstractRepository implements MediaColle
             ->fetchOneAsResource();
     }
 
-    public function save(MediaCollectionResource $resource): void
+    public function save(object $resource): void
     {
-        parent::save($resource);
+        parent::save($this->assertResourceType($resource));
     }
 
     public function findAllEnabled(): array

@@ -13,21 +13,27 @@ use Semitexa\Orm\Uuid\Uuid7;
 #[SatisfiesRepositoryContract(of: MediaAssetRepositoryInterface::class)]
 class MediaAssetRepository extends AbstractRepository implements MediaAssetRepositoryInterface
 {
+    use AssertsExpectedResourceType;
+
     protected function getResourceClass(): string
     {
         return MediaAssetResource::class;
     }
 
-    public function findById(string $id): ?MediaAssetResource
+    public function findById(int|string $id): ?MediaAssetResource
     {
+        if (!is_string($id)) {
+            throw new \InvalidArgumentException('MediaAssetRepository::findById expects a string UUID id.');
+        }
+
         return $this->select()
             ->where($this->getPkColumn(), '=', Uuid7::toBytes($id))
             ->fetchOneAsResource();
     }
 
-    public function save(MediaAssetResource $resource): void
+    public function save(object $resource): void
     {
-        parent::save($resource);
+        parent::save($this->assertResourceType($resource));
     }
 
     public function findByTenantAndCollection(string $tenantId, string $collectionKey, int $limit = 100): array
