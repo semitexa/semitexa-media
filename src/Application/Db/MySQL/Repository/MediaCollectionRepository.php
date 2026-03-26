@@ -39,8 +39,16 @@ class MediaCollectionRepository extends AbstractRepository implements MediaColle
             ->fetchOneAsResource();
     }
 
-    public function save(MediaCollectionResource $resource): void
+    public function save(object $resource): void
     {
+        if (!$resource instanceof MediaCollectionResource) {
+            throw new \InvalidArgumentException(sprintf(
+                'Expected %s, got %s.',
+                MediaCollectionResource::class,
+                $resource::class,
+            ));
+        }
+
         parent::save($resource);
     }
 

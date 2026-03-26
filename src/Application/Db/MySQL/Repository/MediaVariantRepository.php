@@ -33,8 +33,16 @@ class MediaVariantRepository extends AbstractRepository implements MediaVariantR
             ->fetchAll();
     }
 
-    public function save(MediaVariantResource $resource): void
+    public function save(object $resource): void
     {
+        if (!$resource instanceof MediaVariantResource) {
+            throw new \InvalidArgumentException(sprintf(
+                'Expected %s, got %s.',
+                MediaVariantResource::class,
+                $resource::class,
+            ));
+        }
+
         parent::save($resource);
     }
 
