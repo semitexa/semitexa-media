@@ -25,7 +25,7 @@ class MediaQuotaUsageRepository extends AbstractRepository implements MediaQuota
             ->fetchOneAsResource();
     }
 
-    public function save(object $resource): void
+    public function save(MediaQuotaUsageResource $resource): void
     {
         parent::save($resource);
     }

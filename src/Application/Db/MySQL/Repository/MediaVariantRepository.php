@@ -33,7 +33,7 @@ class MediaVariantRepository extends AbstractRepository implements MediaVariantR
             ->fetchAll();
     }
 
-    public function save(object $resource): void
+    public function save(MediaVariantResource $resource): void
     {
         parent::save($resource);
     }

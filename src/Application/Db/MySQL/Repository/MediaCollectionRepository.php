@@ -39,7 +39,7 @@ class MediaCollectionRepository extends AbstractRepository implements MediaColle
             ->fetchOneAsResource();
     }
 
-    public function save(object $resource): void
+    public function save(MediaCollectionResource $resource): void
     {
         parent::save($resource);
     }

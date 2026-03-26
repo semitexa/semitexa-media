@@ -10,7 +10,7 @@ interface MediaQuotaUsageRepositoryInterface
 {
     public function findByBucket(string $tenantId, string $quotaBucket): ?MediaQuotaUsageResource;
 
-    public function save(object $entity): void;
+    public function save(MediaQuotaUsageResource $entity): void;
 
     public function incrementUsage(string $tenantId, string $quotaBucket, int $byteSize): void;
 
