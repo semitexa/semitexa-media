@@ -10,7 +10,7 @@ interface MediaAssetRepositoryInterface
 {
     public function findById(string $id): ?MediaAssetResource;
 
-    public function save(MediaAssetResource $resource): void;
+    public function save(object $entity): void;
 
     /**
      * @return MediaAssetResource[]

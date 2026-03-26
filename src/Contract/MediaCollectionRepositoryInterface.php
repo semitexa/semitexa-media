@@ -10,7 +10,7 @@ interface MediaCollectionRepositoryInterface
 {
     public function findActive(string $collectionKey, ?string $tenantId = null): ?MediaCollectionResource;
 
-    public function save(MediaCollectionResource $resource): void;
+    public function save(object $entity): void;
 
     /**
      * @return MediaCollectionResource[]

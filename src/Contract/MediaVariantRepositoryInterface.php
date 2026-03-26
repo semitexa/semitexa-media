@@ -15,7 +15,7 @@ interface MediaVariantRepositoryInterface
      */
     public function findByAssetId(string $assetId): array;
 
-    public function save(MediaVariantResource $resource): void;
+    public function save(object $entity): void;
 
     /**
      * Atomically claim the next queued variant for processing.

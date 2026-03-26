@@ -18,14 +18,14 @@ class MediaAssetRepository extends AbstractRepository implements MediaAssetRepos
         return MediaAssetResource::class;
     }
 
-    public function findById(string $id): ?MediaAssetResource
+    public function findById(int|string $id): ?MediaAssetResource
     {
         return $this->select()
             ->where($this->getPkColumn(), '=', Uuid7::toBytes($id))
             ->fetchOneAsResource();
     }
 
-    public function save(MediaAssetResource $resource): void
+    public function save(object $resource): void
     {
         parent::save($resource);
     }
