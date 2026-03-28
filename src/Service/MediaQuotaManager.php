@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Core\Attributes\SatisfiesServiceContract;
 use Semitexa\Media\Contract\MediaQuotaManagerInterface;
 use Semitexa\Media\Contract\MediaQuotaUsageRepositoryInterface;
@@ -13,9 +14,8 @@ use Semitexa\Media\Domain\Model\MediaCollection;
 #[SatisfiesServiceContract(of: MediaQuotaManagerInterface::class)]
 final class MediaQuotaManager implements MediaQuotaManagerInterface
 {
-    public function __construct(
-        private readonly MediaQuotaUsageRepositoryInterface $quotaRepository,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaQuotaUsageRepositoryInterface $quotaRepository;
 
     public function checkAndReserve(string $tenantId, MediaCollection $collection, int $byteSize): void
     {

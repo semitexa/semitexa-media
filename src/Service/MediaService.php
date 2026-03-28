@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Core\Attributes\SatisfiesServiceContract;
 use Semitexa\Media\Contract\MediaServiceInterface;
 use Semitexa\Media\Contract\MediaVariantRepositoryInterface;
@@ -15,14 +16,23 @@ use Semitexa\Tenancy\Context\CoroutineContextStore;
 #[SatisfiesServiceContract(of: MediaServiceInterface::class)]
 final class MediaService implements MediaServiceInterface
 {
-    public function __construct(
-        private readonly MediaIngestService $ingestService,
-        private readonly MediaUrlGenerator $urlGenerator,
-        private readonly MediaVariantRepositoryInterface $variantRepository,
-        private readonly MediaQueueDispatcher $queueDispatcher,
-        private readonly MediaVariantPlanner $variantPlanner,
-        private readonly MediaCollectionPolicyResolver $collectionResolver,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaIngestService $ingestService;
+
+    #[InjectAsReadonly]
+    protected MediaUrlGenerator $urlGenerator;
+
+    #[InjectAsReadonly]
+    protected MediaVariantRepositoryInterface $variantRepository;
+
+    #[InjectAsReadonly]
+    protected MediaQueueDispatcher $queueDispatcher;
+
+    #[InjectAsReadonly]
+    protected MediaVariantPlanner $variantPlanner;
+
+    #[InjectAsReadonly]
+    protected MediaCollectionPolicyResolver $collectionResolver;
 
     public function ingestUploadedImage(
         string $contents,
