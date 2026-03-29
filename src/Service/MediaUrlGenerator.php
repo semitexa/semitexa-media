@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Core\Attributes\SatisfiesServiceContract;
 use Semitexa\Media\Contract\MediaUrlGeneratorInterface;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
@@ -14,11 +15,14 @@ use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 #[SatisfiesServiceContract(of: MediaUrlGeneratorInterface::class)]
 final class MediaUrlGenerator implements MediaUrlGeneratorInterface
 {
-    public function __construct(
-        private readonly MediaAssetRepositoryInterface $assetRepository,
-        private readonly MediaVariantRepositoryInterface $variantRepository,
-        private readonly StorageObjectStoreInterface $storage,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaAssetRepositoryInterface $assetRepository;
+
+    #[InjectAsReadonly]
+    protected MediaVariantRepositoryInterface $variantRepository;
+
+    #[InjectAsReadonly]
+    protected StorageObjectStoreInterface $storage;
 
     public function url(string $assetId, ?string $variantKey = null): string
     {
