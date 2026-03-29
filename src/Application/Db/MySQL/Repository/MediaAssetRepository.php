@@ -32,9 +32,9 @@ class MediaAssetRepository implements MediaAssetRepositoryInterface
     public function save(MediaAssetResource $entity): void
     {
         $resource = $this->assertResourceType($entity);
-        $persisted = $resource->id === ''
-            ? $this->repository()->insert($resource)
-            : $this->repository()->update($resource);
+        $persisted = $resource->id !== '' && $this->repository()->findById($resource->id) !== null
+            ? $this->repository()->update($resource)
+            : $this->repository()->insert($resource);
 
         $this->copyIntoMutableResource($persisted, $resource);
     }
