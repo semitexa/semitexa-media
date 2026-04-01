@@ -28,7 +28,7 @@
             "description": "Image-first media asset management: async variants, tenant-aware quotas, CDN-ready delivery URLs"
         }
     },
-    "version": "0.0.1",
+    "version": "v0.0.3",
     "keywords": [
         "semitexa",
         "media",
