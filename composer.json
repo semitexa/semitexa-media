@@ -1,39 +1,38 @@
 {
-    "name": "semitexa/media",
-    "description": "Semitexa Media \u2014 image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
-    "type": "semitexa-module",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Semitexa",
-            "email": "support@semitexa.com"
-        }
-    ],
-    "require": {
-        "php": "^8.4",
-        "ext-imagick": "*",
-        "semitexa/core": "*",
-        "semitexa/orm": "*",
-        "semitexa/storage": "*",
-        "semitexa/tenancy": "*"
-    },
-    "autoload": {
-        "psr-4": {
-            "Semitexa\\Media\\": "src/"
-        }
-    },
-    "extra": {
-        "semitexa-module": {
-            "name": "media",
-            "description": "Image-first media asset management: async variants, tenant-aware quotas, CDN-ready delivery URLs"
-        }
-    },
-    "version": "v0.0.3",
-    "keywords": [
-        "semitexa",
-        "media",
-        "images",
-        "uploads",
-        "cdn"
-    ]
+  "name": "semitexa/media",
+  "description": "Semitexa Media — image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
+  "type": "semitexa-module",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Semitexa",
+      "email": "support@semitexa.com"
+    }
+  ],
+  "require": {
+    "php": "^8.4",
+    "ext-imagick": "*",
+    "semitexa/core": "*",
+    "semitexa/orm": "*",
+    "semitexa/storage": "*",
+    "semitexa/tenancy": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Semitexa\\Media\\": "src/"
+    }
+  },
+  "extra": {
+    "semitexa-module": {
+      "name": "media",
+      "description": "Image-first media asset management: async variants, tenant-aware quotas, CDN-ready delivery URLs"
+    }
+  },
+  "keywords": [
+    "semitexa",
+    "media",
+    "images",
+    "uploads",
+    "cdn"
+  ]
 }
