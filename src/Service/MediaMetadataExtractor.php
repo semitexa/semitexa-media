@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaIngestException;
 use Semitexa\Media\Value\ImageMetadata;
 
+#[AsService]
 final class MediaMetadataExtractor
 {
-    public function __construct(
-        private readonly ImageProcessorInterface $imageProcessor,
-    ) {}
+    #[InjectAsReadonly]
+    protected ImageProcessorInterface $imageProcessor;
 
     /**
      * Extract metadata from raw image bytes.

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
@@ -15,21 +17,27 @@ use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Tenancy\Propagation\TenantAwareJobSerializer;
 use Symfony\Component\Console\Output\OutputInterface;
 
+#[AsService]
 final class MediaWorker
 {
+    #[InjectAsReadonly]
+    protected MediaConfig $config;
+
+    #[InjectAsReadonly]
+    protected MediaAssetRepositoryInterface $assetRepository;
+
+    #[InjectAsReadonly]
+    protected MediaVariantRepositoryInterface $variantRepository;
+
+    #[InjectAsReadonly]
+    protected MediaCollectionPolicyResolver $collectionResolver;
+
+    #[InjectAsReadonly]
+    protected MediaTransformationService $transformationService;
+
     private ?string $currentTransport = null;
     private ?OutputInterface $output = null;
     private string $workerId;
-
-    public function __construct(
-        private readonly MediaConfig $config,
-        private readonly MediaAssetRepositoryInterface $assetRepository,
-        private readonly MediaVariantRepositoryInterface $variantRepository,
-        private readonly MediaCollectionPolicyResolver $collectionResolver,
-        private readonly MediaTransformationService $transformationService,
-    ) {
-        $this->workerId = gethostname() . ':' . getmypid();
-    }
 
     public function setOutput(?OutputInterface $output): void
     {
@@ -38,6 +46,7 @@ final class MediaWorker
 
     public function run(?string $transportName, ?string $queueName = null): void
     {
+        $this->workerId = gethostname() . ':' . getmypid();
         $this->currentTransport = $transportName ?: QueueConfig::defaultTransport();
         $queue = $queueName ?: $this->config->workerQueue;
 

@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Enum\MediaVariantStatus;
 
+#[AsService]
 final class MediaVariantPlanner
 {
-    public function __construct(
-        private readonly MediaVariantRepositoryInterface $variantRepository,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaVariantRepositoryInterface $variantRepository;
 
     /**
      * Create queued variant rows for all presets in the collection.

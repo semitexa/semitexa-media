@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
@@ -11,13 +13,17 @@ use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Value\VariantGenerationResult;
 use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 
+#[AsService]
 final class MediaTransformationService
 {
-    public function __construct(
-        private readonly ImageProcessorInterface $imageProcessor,
-        private readonly VariantStoragePathBuilder $pathBuilder,
-        private readonly StorageObjectStoreInterface $storage,
-    ) {}
+    #[InjectAsReadonly]
+    protected ImageProcessorInterface $imageProcessor;
+
+    #[InjectAsReadonly]
+    protected VariantStoragePathBuilder $pathBuilder;
+
+    #[InjectAsReadonly]
+    protected StorageObjectStoreInterface $storage;
 
     public function generateVariant(
         string $originalPath,

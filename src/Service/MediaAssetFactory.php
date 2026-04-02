@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Enum\MediaAssetStatus;
 use Semitexa\Media\Value\ImageMetadata;
 use Semitexa\Orm\Uuid\Uuid7;
 
+#[AsService]
 final class MediaAssetFactory
 {
     public function createFromUpload(

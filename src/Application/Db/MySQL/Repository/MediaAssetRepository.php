@@ -23,6 +23,11 @@ class MediaAssetRepository implements MediaAssetRepositoryInterface
 
     private ?DomainRepository $repository = null;
 
+    protected function getResourceClass(): string
+    {
+        return MediaAssetResource::class;
+    }
+
     public function findById(string $id): ?MediaAssetResource
     {
         /** @var MediaAssetResource|null */

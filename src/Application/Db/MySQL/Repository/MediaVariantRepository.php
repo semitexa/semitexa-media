@@ -18,6 +18,11 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
 {
     use AssertsExpectedResourceType;
 
+    protected function getResourceClass(): string
+    {
+        return MediaVariantResource::class;
+    }
+
     #[InjectAsReadonly]
     protected ?OrmManager $orm = null;
 

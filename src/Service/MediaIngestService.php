@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
@@ -15,19 +17,35 @@ use Semitexa\Media\Value\MediaAssetReference;
 use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 use Semitexa\Storage\Value\StoredObjectDescriptor;
 
+#[AsService]
 final class MediaIngestService
 {
-    public function __construct(
-        private readonly MediaConfig $config,
-        private readonly MediaCollectionPolicyResolver $collectionResolver,
-        private readonly MediaMetadataExtractor $metadataExtractor,
-        private readonly MediaAssetFactory $assetFactory,
-        private readonly MediaAssetRepositoryInterface $assetRepository,
-        private readonly MediaVariantPlanner $variantPlanner,
-        private readonly MediaQueueDispatcher $queueDispatcher,
-        private readonly MediaQuotaManagerInterface $quotaManager,
-        private readonly StorageObjectStoreInterface $storage,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaConfig $config;
+
+    #[InjectAsReadonly]
+    protected MediaCollectionPolicyResolver $collectionResolver;
+
+    #[InjectAsReadonly]
+    protected MediaMetadataExtractor $metadataExtractor;
+
+    #[InjectAsReadonly]
+    protected MediaAssetFactory $assetFactory;
+
+    #[InjectAsReadonly]
+    protected MediaAssetRepositoryInterface $assetRepository;
+
+    #[InjectAsReadonly]
+    protected MediaVariantPlanner $variantPlanner;
+
+    #[InjectAsReadonly]
+    protected MediaQueueDispatcher $queueDispatcher;
+
+    #[InjectAsReadonly]
+    protected MediaQuotaManagerInterface $quotaManager;
+
+    #[InjectAsReadonly]
+    protected StorageObjectStoreInterface $storage;
 
     public function ingestUploadedImage(
         string $contents,
