@@ -56,7 +56,7 @@ final class MediaWorkCommand extends Command
         try {
             $container = ContainerFactory::get();
 
-            $config              = new MediaConfig();
+            $config              = $container->get(MediaConfig::class);
             $assetRepository     = $container->get(MediaAssetRepositoryInterface::class);
             $variantRepository   = $container->get(MediaVariantRepositoryInterface::class);
             $collectionRepository = $container->get(MediaCollectionRepositoryInterface::class);
