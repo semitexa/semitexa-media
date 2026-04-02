@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Media\Domain\Exception\MediaCollectionNotFoundException;
 use Semitexa\Media\Domain\Model\MediaCollection;
@@ -19,12 +21,14 @@ use Semitexa\Media\Value\ImageTransformPreset;
  * 2. DB-persisted tenant-specific row
  * 3. DB-persisted global row (tenant_id IS NULL)
  */
+#[AsService]
 final class MediaCollectionPolicyResolver
 {
-    public function __construct(
-        private readonly MediaCollectionRegistry $registry,
-        private readonly MediaCollectionRepositoryInterface $collectionRepository,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaCollectionRegistry $registry;
+
+    #[InjectAsReadonly]
+    protected MediaCollectionRepositoryInterface $collectionRepository;
 
     public function resolve(string $collectionKey, ?string $tenantId = null): MediaCollection
     {

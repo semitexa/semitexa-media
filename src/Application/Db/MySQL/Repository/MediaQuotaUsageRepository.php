@@ -18,6 +18,11 @@ class MediaQuotaUsageRepository implements MediaQuotaUsageRepositoryInterface
 {
     use AssertsExpectedResourceType;
 
+    protected function getResourceClass(): string
+    {
+        return MediaQuotaUsageResource::class;
+    }
+
     #[InjectAsReadonly]
     protected ?OrmManager $orm = null;
 

@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageResource;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Contract\MediaQuotaUsageRepositoryInterface;
 
+#[AsService]
 final class MediaQuotaRecalculator
 {
-    public function __construct(
-        private readonly MediaQuotaUsageRepositoryInterface $quotaRepository,
-        private readonly ?MediaAssetRepositoryInterface $assetRepository = null,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaQuotaUsageRepositoryInterface $quotaRepository;
+
+    #[InjectAsReadonly]
+    protected ?MediaAssetRepositoryInterface $assetRepository = null;
 
     public function recalculate(string $tenantId, string $quotaBucket): void
     {

@@ -18,6 +18,11 @@ class MediaCollectionRepository implements MediaCollectionRepositoryInterface
 {
     use AssertsExpectedResourceType;
 
+    protected function getResourceClass(): string
+    {
+        return MediaCollectionResource::class;
+    }
+
     #[InjectAsReadonly]
     protected ?OrmManager $orm = null;
 

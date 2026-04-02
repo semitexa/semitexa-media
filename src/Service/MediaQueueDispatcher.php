@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attributes\InjectAsReadonly;
 use Semitexa\Core\Queue\QueueConfig;
 use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
@@ -12,11 +14,11 @@ use Semitexa\Media\Queue\Message\QueuedMediaTransformMessage;
 use Semitexa\Orm\Uuid\Uuid7;
 use Semitexa\Tenancy\Propagation\TenantAwareJobSerializer;
 
+#[AsService]
 final class MediaQueueDispatcher
 {
-    public function __construct(
-        private readonly MediaConfig $config,
-    ) {}
+    #[InjectAsReadonly]
+    protected MediaConfig $config;
 
     public function dispatch(string $assetId, MediaVariantResource $variant): void
     {

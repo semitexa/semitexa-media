@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
+use Semitexa\Core\Attributes\AsService;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Enum\MediaKind;
 use Semitexa\Media\Enum\MediaVisibility;
@@ -15,6 +16,7 @@ use Semitexa\Media\Value\ImageTransformPreset;
  * Collections are registered at boot time by application modules.
  * Each definition is an array that matches the MediaCollection constructor arguments.
  */
+#[AsService]
 final class MediaCollectionRegistry
 {
     /** @var array<string, array<string, mixed>> */
