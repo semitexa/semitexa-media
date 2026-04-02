@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Configuration;
 
+use Semitexa\Core\Attributes\AsService;
 use Semitexa\Core\Environment;
 
+#[AsService]
 final readonly class MediaConfig
 {
     public string $workerQueue;
