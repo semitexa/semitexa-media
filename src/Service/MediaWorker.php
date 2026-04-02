@@ -37,7 +37,7 @@ final class MediaWorker
 
     private ?string $currentTransport = null;
     private ?OutputInterface $output = null;
-    private string $workerId;
+    private string $workerId = '';
 
     public function setOutput(?OutputInterface $output): void
     {
@@ -46,7 +46,7 @@ final class MediaWorker
 
     public function run(?string $transportName, ?string $queueName = null): void
     {
-        $this->workerId = gethostname() . ':' . getmypid();
+        $this->initializeWorkerId();
         $this->currentTransport = $transportName ?: QueueConfig::defaultTransport();
         $queue = $queueName ?: $this->config->workerQueue;
 
@@ -87,6 +87,7 @@ final class MediaWorker
 
     private function processMessage(QueuedMediaTransformMessage $message): void
     {
+        $this->initializeWorkerId();
         $asset = $this->assetRepository->findById($message->assetId);
 
         if ($asset === null) {
@@ -199,5 +200,15 @@ final class MediaWorker
         } else {
             echo "{$message}\n";
         }
+    }
+
+    private function initializeWorkerId(): void
+    {
+        if ($this->workerId !== '') {
+            return;
+        }
+
+        $hostname = gethostname();
+        $this->workerId = ($hostname !== false ? $hostname : 'unknown-host') . ':' . getmypid();
     }
 }
