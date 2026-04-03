@@ -1,4 +1,4 @@
-# semitexa/media
+# Semitexa Media
 
 Image-first media asset management with async variant generation, tenant-aware quotas, and CDN-ready delivery URLs.
 
