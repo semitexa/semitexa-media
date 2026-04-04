@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Application\Db\MySQL\Repository;
 
-use Semitexa\Core\Attributes\InjectAsReadonly;
-use Semitexa\Core\Attributes\SatisfiesRepositoryContract;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetTableModel;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;

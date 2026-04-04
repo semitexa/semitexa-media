@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
-use Semitexa\Core\Attributes\AsService;
-use Semitexa\Core\Attributes\InjectAsReadonly;
+use Semitexa\Core\Attribute\AsService;
+use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Queue\QueueConfig;
 use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;

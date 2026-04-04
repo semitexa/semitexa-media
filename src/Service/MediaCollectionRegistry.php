@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Service;
 
-use Semitexa\Core\Attributes\AsService;
+use Semitexa\Core\Attribute\AsService;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Enum\MediaKind;
 use Semitexa\Media\Enum\MediaVisibility;
