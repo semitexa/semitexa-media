@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Image;
 
-use Semitexa\Core\Attributes\SatisfiesServiceContract;
+use Semitexa\Core\Attribute\SatisfiesServiceContract;
 use Semitexa\Media\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
 use Semitexa\Media\Enum\ResizeMode;
