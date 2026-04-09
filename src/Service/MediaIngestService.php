@@ -6,6 +6,7 @@ namespace Semitexa\Media\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Log\LoggerInterface;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
@@ -46,6 +47,9 @@ final class MediaIngestService
 
     #[InjectAsReadonly]
     protected StorageObjectStoreInterface $storage;
+
+    #[InjectAsReadonly]
+    protected LoggerInterface $logger;
 
     public function ingestUploadedImage(
         string $contents,
@@ -104,7 +108,12 @@ final class MediaIngestService
                 $this->queueDispatcher->dispatch($assetId, $variant);
             } catch (\Throwable $e) {
                 // Log dispatch failure but do not fail ingest — variants can be retried
-                error_log("Media queue dispatch failed for asset {$assetId} variant {$variant->variant_key}: {$e->getMessage()}");
+                $this->logger->error('Media queue dispatch failed', [
+                    'asset_id' => $assetId,
+                    'variant_key' => $variant->variant_key,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -175,7 +184,12 @@ final class MediaIngestService
             try {
                 $this->queueDispatcher->dispatch($assetId, $variant);
             } catch (\Throwable $e) {
-                error_log("Media queue dispatch failed for asset {$assetId} variant {$variant->variant_key}: {$e->getMessage()}");
+                $this->logger->error('Media queue dispatch failed', [
+                    'asset_id' => $assetId,
+                    'variant_key' => $variant->variant_key,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
