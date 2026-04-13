@@ -7,7 +7,7 @@ namespace Semitexa\Media\Application\Db\MySQL\Model;
 use Semitexa\Orm\Attribute\AsMapper;
 use Semitexa\Orm\Contract\TableModelMapper;
 
-#[AsMapper(tableModel: MediaQuotaUsageTableModel::class, domainModel: MediaQuotaUsageResource::class)]
+#[AsMapper(resourceModel: MediaQuotaUsageTableModel::class, domainModel: MediaQuotaUsageResource::class)]
 final class MediaQuotaUsageMapper implements TableModelMapper
 {
     public function toDomain(object $tableModel): object
