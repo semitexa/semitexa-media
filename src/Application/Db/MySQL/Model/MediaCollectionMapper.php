@@ -18,7 +18,7 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
 
     public function toSourceModel(object $domainModel): object
     {
-        $domainModel instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected resource model.');
+        $domainModel instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected domain model.');
         return clone $domainModel;
     }
 }

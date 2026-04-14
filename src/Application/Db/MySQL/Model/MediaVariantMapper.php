@@ -18,7 +18,7 @@ final class MediaVariantMapper implements ResourceModelMapperInterface
 
     public function toSourceModel(object $domainModel): object
     {
-        $domainModel instanceof MediaVariantResource || throw new \InvalidArgumentException('Unexpected resource model.');
+        $domainModel instanceof MediaVariantResource || throw new \InvalidArgumentException('Unexpected domain model.');
         return clone $domainModel;
     }
 }

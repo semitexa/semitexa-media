@@ -18,7 +18,7 @@ final class MediaQuotaUsageMapper implements ResourceModelMapperInterface
 
     public function toSourceModel(object $domainModel): object
     {
-        $domainModel instanceof MediaQuotaUsageResource || throw new \InvalidArgumentException('Unexpected resource model.');
+        $domainModel instanceof MediaQuotaUsageResource || throw new \InvalidArgumentException('Unexpected domain model.');
         return clone $domainModel;
     }
 }
