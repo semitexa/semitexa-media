@@ -5,27 +5,20 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Db\MySQL\Model;
 
 use Semitexa\Orm\Attribute\AsMapper;
-use Semitexa\Orm\Contract\TableModelMapper;
+use Semitexa\Orm\Contract\ResourceModelMapperInterface;
 
-#[AsMapper(resourceModel: MediaCollectionTableModel::class, domainModel: MediaCollectionResource::class)]
-final class MediaCollectionMapper implements TableModelMapper
+#[AsMapper(resourceModel: MediaCollectionResource::class, domainModel: MediaCollectionResource::class)]
+final class MediaCollectionMapper implements ResourceModelMapperInterface
 {
-    public function toDomain(object $tableModel): object
+    public function toDomain(object $resourceModel): object
     {
-        $tableModel instanceof MediaCollectionTableModel || throw new \InvalidArgumentException('Unexpected table model.');
-
-        $resource = new MediaCollectionResource();
-        foreach (get_object_vars($tableModel) as $property => $value) {
-            $resource->{$property} = $value;
-        }
-
-        return $resource;
+        $resourceModel instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected resource model.');
+        return clone $resourceModel;
     }
 
-    public function toTableModel(object $domainModel): object
+    public function toSourceModel(object $domainModel): object
     {
-        $domainModel instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected resource model.');
-
-        return new MediaCollectionTableModel(...get_object_vars($domainModel));
+        $domainModel instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected domain model.');
+        return clone $domainModel;
     }
 }

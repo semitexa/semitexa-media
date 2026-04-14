@@ -7,7 +7,6 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantTableModel;
 use Semitexa\Media\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -32,8 +31,8 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
     {
         /** @var MediaVariantResource|null */
         return $this->repository()->query()
-            ->where(MediaVariantTableModel::column('media_asset_id'), Operator::Equals, $assetId)
-            ->where(MediaVariantTableModel::column('variant_key'), Operator::Equals, $variantKey)
+            ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
+            ->where(MediaVariantResource::column('variant_key'), Operator::Equals, $variantKey)
             ->fetchOneAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
 
@@ -41,7 +40,7 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
     {
         /** @var list<MediaVariantResource> */
         return $this->repository()->query()
-            ->where(MediaVariantTableModel::column('media_asset_id'), Operator::Equals, $assetId)
+            ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
 
@@ -86,8 +85,8 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
 
         /** @var MediaVariantResource|null */
         return $this->repository()->query()
-            ->where(MediaVariantTableModel::column('lease_owner'), Operator::Equals, $leaseOwner)
-            ->where(MediaVariantTableModel::column('status'), Operator::Equals, 'processing')
+            ->where(MediaVariantResource::column('lease_owner'), Operator::Equals, $leaseOwner)
+            ->where(MediaVariantResource::column('status'), Operator::Equals, 'processing')
             ->fetchOneAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
 
@@ -95,7 +94,7 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
     {
         /** @var list<MediaVariantResource> */
         return $this->repository()->query()
-            ->where(MediaVariantTableModel::column('status'), Operator::Equals, 'failed')
+            ->where(MediaVariantResource::column('status'), Operator::Equals, 'failed')
             ->limit($limit)
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
@@ -104,15 +103,15 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
     {
         /** @var list<MediaVariantResource> */
         return $this->repository()->query()
-            ->where(MediaVariantTableModel::column('media_asset_id'), Operator::Equals, $assetId)
-            ->where(MediaVariantTableModel::column('status'), Operator::Equals, 'failed')
+            ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
+            ->where(MediaVariantResource::column('status'), Operator::Equals, 'failed')
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
 
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
-            MediaVariantTableModel::class,
+            MediaVariantResource::class,
             MediaVariantResource::class,
         );
     }

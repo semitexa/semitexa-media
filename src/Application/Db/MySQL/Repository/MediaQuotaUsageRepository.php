@@ -7,7 +7,6 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageResource;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageTableModel;
 use Semitexa\Media\Contract\MediaQuotaUsageRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -32,8 +31,8 @@ class MediaQuotaUsageRepository implements MediaQuotaUsageRepositoryInterface
     {
         /** @var MediaQuotaUsageResource|null */
         return $this->repository()->query()
-            ->where(MediaQuotaUsageTableModel::column('tenant_id'), Operator::Equals, $tenantId)
-            ->where(MediaQuotaUsageTableModel::column('quota_bucket'), Operator::Equals, $quotaBucket)
+            ->where(MediaQuotaUsageResource::column('tenant_id'), Operator::Equals, $tenantId)
+            ->where(MediaQuotaUsageResource::column('quota_bucket'), Operator::Equals, $quotaBucket)
             ->fetchOneAs(MediaQuotaUsageResource::class, $this->orm()->getMapperRegistry());
     }
 
@@ -73,7 +72,7 @@ class MediaQuotaUsageRepository implements MediaQuotaUsageRepositoryInterface
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
-            MediaQuotaUsageTableModel::class,
+            MediaQuotaUsageResource::class,
             MediaQuotaUsageResource::class,
         );
     }
