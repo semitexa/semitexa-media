@@ -7,7 +7,6 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetTableModel;
 use Semitexa\Media\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -48,8 +47,8 @@ class MediaAssetRepository implements MediaAssetRepositoryInterface
     {
         /** @var list<MediaAssetResource> */
         return $this->repository()->query()
-            ->where(MediaAssetTableModel::column('tenant_id'), Operator::Equals, $tenantId)
-            ->where(MediaAssetTableModel::column('collection_key'), Operator::Equals, $collectionKey)
+            ->where(MediaAssetResource::column('tenant_id'), Operator::Equals, $tenantId)
+            ->where(MediaAssetResource::column('collection_key'), Operator::Equals, $collectionKey)
             ->limit($limit)
             ->fetchAllAs(MediaAssetResource::class, $this->orm()->getMapperRegistry());
     }
@@ -87,7 +86,7 @@ class MediaAssetRepository implements MediaAssetRepositoryInterface
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
-            MediaAssetTableModel::class,
+            MediaAssetResource::class,
             MediaAssetResource::class,
         );
     }

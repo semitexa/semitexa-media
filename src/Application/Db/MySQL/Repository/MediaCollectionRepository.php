@@ -7,7 +7,6 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionTableModel;
 use Semitexa\Media\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -33,9 +32,9 @@ class MediaCollectionRepository implements MediaCollectionRepositoryInterface
         if ($tenantId !== null) {
             /** @var MediaCollectionResource|null $row */
             $row = $this->repository()->query()
-                ->where(MediaCollectionTableModel::column('collection_key'), Operator::Equals, $collectionKey)
-                ->where(MediaCollectionTableModel::column('tenant_id'), Operator::Equals, $tenantId)
-                ->where(MediaCollectionTableModel::column('enabled'), Operator::Equals, 1)
+                ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
+                ->where(MediaCollectionResource::column('tenant_id'), Operator::Equals, $tenantId)
+                ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
                 ->fetchOneAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
 
             if ($row !== null) {
@@ -45,9 +44,9 @@ class MediaCollectionRepository implements MediaCollectionRepositoryInterface
 
         /** @var MediaCollectionResource|null */
         return $this->repository()->query()
-            ->where(MediaCollectionTableModel::column('collection_key'), Operator::Equals, $collectionKey)
-            ->whereNull(MediaCollectionTableModel::column('tenant_id'))
-            ->where(MediaCollectionTableModel::column('enabled'), Operator::Equals, 1)
+            ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
+            ->whereNull(MediaCollectionResource::column('tenant_id'))
+            ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
             ->fetchOneAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
     }
 
@@ -65,14 +64,14 @@ class MediaCollectionRepository implements MediaCollectionRepositoryInterface
     {
         /** @var list<MediaCollectionResource> */
         return $this->repository()->query()
-            ->where(MediaCollectionTableModel::column('enabled'), Operator::Equals, 1)
+            ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
             ->fetchAllAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
     }
 
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
-            MediaCollectionTableModel::class,
+            MediaCollectionResource::class,
             MediaCollectionResource::class,
         );
     }

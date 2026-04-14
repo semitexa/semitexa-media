@@ -5,27 +5,20 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Db\MySQL\Model;
 
 use Semitexa\Orm\Attribute\AsMapper;
-use Semitexa\Orm\Contract\TableModelMapper;
+use Semitexa\Orm\Contract\ResourceModelMapperInterface;
 
-#[AsMapper(resourceModel: MediaAssetTableModel::class, domainModel: MediaAssetResource::class)]
-final class MediaAssetMapper implements TableModelMapper
+#[AsMapper(resourceModel: MediaAssetResource::class, domainModel: MediaAssetResource::class)]
+final class MediaAssetMapper implements ResourceModelMapperInterface
 {
-    public function toDomain(object $tableModel): object
+    public function toDomain(object $resourceModel): object
     {
-        $tableModel instanceof MediaAssetTableModel || throw new \InvalidArgumentException('Unexpected table model.');
-
-        $resource = new MediaAssetResource();
-        foreach (get_object_vars($tableModel) as $property => $value) {
-            $resource->{$property} = $value;
-        }
-
-        return $resource;
+        $resourceModel instanceof MediaAssetResource || throw new \InvalidArgumentException('Unexpected resource model.');
+        return clone $resourceModel;
     }
 
-    public function toTableModel(object $domainModel): object
+    public function toSourceModel(object $domainModel): object
     {
         $domainModel instanceof MediaAssetResource || throw new \InvalidArgumentException('Unexpected resource model.');
-
-        return new MediaAssetTableModel(...get_object_vars($domainModel));
+        return clone $domainModel;
     }
 }
