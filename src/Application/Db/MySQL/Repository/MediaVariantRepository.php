@@ -23,7 +23,7 @@ class MediaVariantRepository implements MediaVariantRepositoryInterface
     }
 
     #[InjectAsReadonly]
-    protected ?OrmManager $orm = null;
+    protected OrmManager $orm;
 
     private ?DomainRepository $repository = null;
 

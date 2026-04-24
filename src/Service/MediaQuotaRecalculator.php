@@ -17,14 +17,14 @@ final class MediaQuotaRecalculator
     protected MediaQuotaUsageRepositoryInterface $quotaRepository;
 
     #[InjectAsReadonly]
-    protected ?MediaAssetRepositoryInterface $assetRepository = null;
+    protected MediaAssetRepositoryInterface $assetRepository;
 
     public function recalculate(string $tenantId, string $quotaBucket): void
     {
         $totalBytes = 0;
         $totalCount = 0;
 
-        if ($this->assetRepository !== null) {
+        if (isset($this->assetRepository)) {
             $totalBytes = $this->assetRepository->sumOriginalBytesByBucket($tenantId, $quotaBucket);
             $totalCount = $this->assetRepository->countByBucket($tenantId, $quotaBucket);
         }
