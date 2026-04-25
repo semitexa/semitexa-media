@@ -21,13 +21,12 @@ final class MediaQuotaRecalculator
 
     public function recalculate(string $tenantId, string $quotaBucket): void
     {
-        $totalBytes = 0;
-        $totalCount = 0;
-
-        if (isset($this->assetRepository)) {
-            $totalBytes = $this->assetRepository->sumOriginalBytesByBucket($tenantId, $quotaBucket);
-            $totalCount = $this->assetRepository->countByBucket($tenantId, $quotaBucket);
+        if (!isset($this->assetRepository)) {
+            throw new \LogicException('MediaQuotaRecalculator requires MediaAssetRepositoryInterface injection.');
         }
+
+        $totalBytes = $this->assetRepository->sumOriginalBytesByBucket($tenantId, $quotaBucket);
+        $totalCount = $this->assetRepository->countByBucket($tenantId, $quotaBucket);
 
         $resource = $this->quotaRepository->findByBucket($tenantId, $quotaBucket);
 
