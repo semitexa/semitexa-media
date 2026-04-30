@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Db\MySQL\Model;
 
 use Semitexa\Orm\Attribute\AsMapper;
-use Semitexa\Orm\Contract\ResourceModelMapperInterface;
+use Semitexa\Orm\Domain\Contract\ResourceModelMapperInterface;
 
 #[AsMapper(resourceModel: MediaQuotaUsageResource::class, domainModel: MediaQuotaUsageResource::class)]
 final class MediaQuotaUsageMapper implements ResourceModelMapperInterface

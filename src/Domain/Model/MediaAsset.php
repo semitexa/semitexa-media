@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Domain\Model;
 
-use Semitexa\Media\Enum\MediaAssetStatus;
-use Semitexa\Media\Enum\MediaKind;
-use Semitexa\Media\Enum\MediaVisibility;
+use Semitexa\Media\Domain\Enum\MediaAssetStatus;
+use Semitexa\Media\Domain\Enum\MediaKind;
+use Semitexa\Media\Domain\Enum\MediaVisibility;
 
 final class MediaAsset
 {

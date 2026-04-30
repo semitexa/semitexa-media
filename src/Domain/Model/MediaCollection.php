@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Domain\Model;
 
-use Semitexa\Media\Enum\MediaKind;
-use Semitexa\Media\Enum\MediaVisibility;
-use Semitexa\Media\Value\ImageTransformPreset;
+use Semitexa\Media\Domain\Enum\MediaKind;
+use Semitexa\Media\Domain\Enum\MediaVisibility;
+use Semitexa\Media\Domain\Model\ImageTransformPreset;
 
 final readonly class MediaCollection
 {
