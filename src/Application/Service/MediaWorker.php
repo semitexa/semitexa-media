@@ -14,7 +14,7 @@ use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
 use Semitexa\Core\Queue\QueueConfig;
 use Semitexa\Core\Queue\QueueTransportRegistry;
-use Semitexa\Tenancy\Propagation\TenantAwareJobSerializer;
+use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsService]

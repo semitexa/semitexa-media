@@ -9,7 +9,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Enum\MediaAssetStatus;
 use Semitexa\Media\Domain\Model\ImageMetadata;
-use Semitexa\Orm\Uuid\Uuid7;
+use Semitexa\Orm\Application\Service\Uuid7;
 
 #[AsService]
 final class MediaAssetFactory

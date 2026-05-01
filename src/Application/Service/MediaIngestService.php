@@ -242,6 +242,6 @@ final class MediaIngestService
 
     private function generateAssetId(): string
     {
-        return \Semitexa\Orm\Uuid\Uuid7::generate();
+        return \Semitexa\Orm\Application\Service\Uuid7::generate();
     }
 }

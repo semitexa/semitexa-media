@@ -11,8 +11,8 @@ use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
-use Semitexa\Orm\Uuid\Uuid7;
-use Semitexa\Tenancy\Propagation\TenantAwareJobSerializer;
+use Semitexa\Orm\Application\Service\Uuid7;
+use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 
 #[AsService]
 final class MediaQueueDispatcher

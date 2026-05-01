@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Semitexa\Media\Application\Db\MySQL\Model;
+namespace Semitexa\Media\Application\Db\MySQL\Mapper;
 
 use Semitexa\Orm\Attribute\AsMapper;
 use Semitexa\Orm\Domain\Contract\ResourceModelMapperInterface;
+use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
 
 #[AsMapper(resourceModel: MediaCollectionResource::class, domainModel: MediaCollectionResource::class)]
 final class MediaCollectionMapper implements ResourceModelMapperInterface
