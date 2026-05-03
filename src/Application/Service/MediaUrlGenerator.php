@@ -10,7 +10,7 @@ use Semitexa\Media\Domain\Contract\MediaUrlGeneratorInterface;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
-use Semitexa\Storage\Domain\Contract\StorageObjectStoreInterface;
+use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 
 #[SatisfiesServiceContract(of: MediaUrlGeneratorInterface::class)]
 final class MediaUrlGenerator implements MediaUrlGeneratorInterface

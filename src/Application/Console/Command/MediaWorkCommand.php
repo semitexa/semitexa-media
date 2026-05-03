@@ -16,7 +16,7 @@ use Semitexa\Media\Application\Service\MediaCollectionRegistry;
 use Semitexa\Media\Application\Service\MediaTransformationService;
 use Semitexa\Media\Application\Service\MediaWorker;
 use Semitexa\Media\Application\Service\VariantStoragePathBuilder;
-use Semitexa\Storage\Domain\Contract\StorageObjectStoreInterface;
+use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;

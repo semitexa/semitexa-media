@@ -10,7 +10,7 @@ use Semitexa\Media\Domain\Contract\MediaServiceInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\MediaAssetReference;
-use Semitexa\Storage\Domain\Model\StoredObjectDescriptor;
+use Semitexa\Storage\Value\StoredObjectDescriptor;
 use Semitexa\Tenancy\Context\CoroutineContextStore;
 
 #[SatisfiesServiceContract(of: MediaServiceInterface::class)]

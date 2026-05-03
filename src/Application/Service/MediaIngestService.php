@@ -15,8 +15,8 @@ use Semitexa\Media\Domain\Exception\MediaIngestException;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Enum\MediaAssetStatus;
 use Semitexa\Media\Domain\Model\MediaAssetReference;
-use Semitexa\Storage\Domain\Contract\StorageObjectStoreInterface;
-use Semitexa\Storage\Domain\Model\StoredObjectDescriptor;
+use Semitexa\Storage\Contract\StorageObjectStoreInterface;
+use Semitexa\Storage\Value\StoredObjectDescriptor;
 
 #[AsService]
 final class MediaIngestService
