@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Semitexa\Media\Domain\Contract;
+
+use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
+
+interface MediaCollectionRepositoryInterface
+{
+    public function findActive(string $collectionKey, ?string $tenantId = null): ?MediaCollectionResource;
+
+    public function save(MediaCollectionResource $entity): void;
+
+    /**
+     * @return MediaCollectionResource[]
+     */
+    public function findAllEnabled(): array;
+}

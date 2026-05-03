@@ -7,15 +7,14 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
-use Semitexa\Media\Contract\MediaCollectionRepositoryInterface;
+use Semitexa\Media\Domain\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
 use Semitexa\Orm\Repository\DomainRepository;
 
 #[SatisfiesRepositoryContract(of: MediaCollectionRepositoryInterface::class)]
-class MediaCollectionRepository implements MediaCollectionRepositoryInterface
+class MediaCollectionRepository extends AbstractMediaRepository implements MediaCollectionRepositoryInterface
 {
-    use AssertsExpectedResourceType;
 
     protected function getResourceClass(): string
     {

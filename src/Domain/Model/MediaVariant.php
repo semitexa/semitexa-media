@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Domain\Model;
 
-use Semitexa\Media\Enum\MediaVariantStatus;
+use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 
 final class MediaVariant
 {
