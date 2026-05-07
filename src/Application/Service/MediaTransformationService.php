@@ -11,7 +11,7 @@ use Semitexa\Media\Domain\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Model\VariantGenerationResult;
-use Semitexa\Storage\Domain\Contract\StorageObjectStoreInterface;
+use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 
 #[AsService]
 final class MediaTransformationService

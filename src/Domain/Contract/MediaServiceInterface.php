@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Semitexa\Media\Domain\Contract;
 
 use Semitexa\Media\Domain\Model\MediaAssetReference;
-use Semitexa\Storage\Domain\Model\StoredObjectDescriptor;
+use Semitexa\Storage\Value\StoredObjectDescriptor;
 
 interface MediaServiceInterface
 {
