@@ -34,5 +34,6 @@
         "images",
         "uploads",
         "cdn"
-    ]
+    ],
+    "version": "v0.0.4"
 }
