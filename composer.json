@@ -1,6 +1,6 @@
 {
     "name": "semitexa/media",
-    "description": "Semitexa Media — image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
+    "description": "Semitexa Media \u2014 image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
     "type": "semitexa-module",
     "license": "MIT",
     "authors": [
@@ -34,6 +34,5 @@
         "images",
         "uploads",
         "cdn"
-    ],
-    "version": "v0.0.4"
+    ]
 }
