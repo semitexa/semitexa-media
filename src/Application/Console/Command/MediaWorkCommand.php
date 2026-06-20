@@ -6,17 +6,7 @@ namespace Semitexa\Media\Application\Console\Command;
 
 use Semitexa\Core\Attribute\AsCommand;
 use Semitexa\Core\Container\ContainerFactory;
-use Semitexa\Media\Configuration\MediaConfig;
-use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
-use Semitexa\Media\Domain\Contract\MediaCollectionRepositoryInterface;
-use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
-use Semitexa\Media\Application\Service\ImagickImageProcessor;
-use Semitexa\Media\Application\Service\MediaCollectionPolicyResolver;
-use Semitexa\Media\Application\Service\MediaCollectionRegistry;
-use Semitexa\Media\Application\Service\MediaTransformationService;
 use Semitexa\Media\Application\Service\MediaWorker;
-use Semitexa\Media\Application\Service\VariantStoragePathBuilder;
-use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -54,28 +44,17 @@ final class MediaWorkCommand extends Command
         $io->title('Media worker');
 
         try {
+            // MediaCollectionPolicyResolver, MediaTransformationService and
+            // MediaWorker are #[AsService] attribute-DI services — they have
+            // no explicit constructor, so PHPStan's new.noConstructor would
+            // (and did) flag any `new X(...)` call against them. Resolve via
+            // the container so each gets its dependencies through #[InjectAs*]
+            // property injection. As a bonus, MediaCollectionPolicyResolver
+            // now sees the boot-time-populated registry rather than the empty
+            // freshly-`new`d one the previous code passed in.
             $container = ContainerFactory::get();
 
-            $config              = $container->get(MediaConfig::class);
-            $assetRepository     = $container->get(MediaAssetRepositoryInterface::class);
-            $variantRepository   = $container->get(MediaVariantRepositoryInterface::class);
-            $collectionRepository = $container->get(MediaCollectionRepositoryInterface::class);
-            $storage             = $container->get(StorageObjectStoreInterface::class);
-
-            $collectionRegistry  = new MediaCollectionRegistry();
-            $collectionResolver  = new MediaCollectionPolicyResolver($collectionRegistry, $collectionRepository);
-
-            $imageProcessor       = new ImagickImageProcessor();
-            $pathBuilder          = new VariantStoragePathBuilder();
-            $transformationService = new MediaTransformationService($imageProcessor, $pathBuilder, $storage);
-
-            $worker = new MediaWorker(
-                config:               $config,
-                assetRepository:      $assetRepository,
-                variantRepository:    $variantRepository,
-                collectionResolver:   $collectionResolver,
-                transformationService: $transformationService,
-            );
+            $worker = $container->get(MediaWorker::class);
             $worker->setOutput($output);
             $worker->run($transport, $queue);
         } catch (\Throwable $e) {

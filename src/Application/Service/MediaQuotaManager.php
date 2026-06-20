@@ -17,6 +17,9 @@ final class MediaQuotaManager implements MediaQuotaManagerInterface
     #[InjectAsReadonly]
     protected MediaQuotaUsageRepositoryInterface $quotaRepository;
 
+    #[InjectAsReadonly]
+    protected MediaQuotaRecalculator $quotaRecalculator;
+
     public function checkAndReserve(string $tenantId, MediaCollection $collection, int $byteSize): void
     {
         $bucket = $collection->quotaBucket;
@@ -43,6 +46,6 @@ final class MediaQuotaManager implements MediaQuotaManagerInterface
 
     public function recalculate(string $tenantId, string $quotaBucket): void
     {
-        (new MediaQuotaRecalculator($this->quotaRepository))->recalculate($tenantId, $quotaBucket);
+        $this->quotaRecalculator->recalculate($tenantId, $quotaBucket);
     }
 }
