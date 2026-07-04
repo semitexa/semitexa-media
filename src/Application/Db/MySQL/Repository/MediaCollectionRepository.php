@@ -10,6 +10,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
 use Semitexa\Media\Domain\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
+use Semitexa\Orm\Query\SystemScopeToken;
 use Semitexa\Orm\Repository\DomainRepository;
 
 #[SatisfiesRepositoryContract(of: MediaCollectionRepositoryInterface::class)]
@@ -26,11 +27,13 @@ class MediaCollectionRepository extends AbstractMediaRepository implements Media
 
     private ?DomainRepository $repository = null;
 
+    private ?DomainRepository $system = null;
+
     public function findActive(string $collectionKey, ?string $tenantId = null): ?MediaCollectionResource
     {
         if ($tenantId !== null) {
             /** @var MediaCollectionResource|null $row */
-            $row = $this->repository()->query()
+            $row = $this->system()->query()
                 ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
                 ->where(MediaCollectionResource::column('tenant_id'), Operator::Equals, $tenantId)
                 ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
@@ -42,29 +45,39 @@ class MediaCollectionRepository extends AbstractMediaRepository implements Media
         }
 
         /** @var MediaCollectionResource|null */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
             ->whereNull(MediaCollectionResource::column('tenant_id'))
             ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
             ->fetchOneAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
     }
 
-    public function save(MediaCollectionResource $entity): void
+    public function save(MediaCollectionResource $entity): MediaCollectionResource
     {
-        $resource = $this->assertResourceType($entity);
-        $persisted = $resource->id === ''
-            ? $this->repository()->insert($resource)
-            : $this->repository()->update($resource);
-
-        $this->copyIntoMutableResource($persisted, $resource);
+        /** @var MediaCollectionResource */
+        return $entity->id === ''
+            ? $this->system()->insert($entity)
+            : $this->system()->update($entity);
     }
 
     public function findAllEnabled(): array
     {
         /** @var list<MediaCollectionResource> */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
             ->fetchAllAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
+    }
+
+    /**
+     * SYSTEM-scope view — the media pipeline (worker, planner, recalculator)
+     * operates rows by their own ids across tenants; tenant-parameterised
+     * finders below scope with forTenant()/explicit predicates. The resources
+     * are #[TenantScoped], so any FUTURE finder must pick a posture — unscoped
+     * queries fail closed instead of leaking across tenants.
+     */
+    private function system(): DomainRepository
+    {
+        return $this->system ??= $this->repository()->withoutTenantScope(SystemScopeToken::issue());
     }
 
     private function repository(): DomainRepository
@@ -80,12 +93,4 @@ class MediaCollectionRepository extends AbstractMediaRepository implements Media
         return $this->orm ??= new OrmManager();
     }
 
-    private function copyIntoMutableResource(object $source, MediaCollectionResource $target): void
-    {
-        $source instanceof MediaCollectionResource || throw new \InvalidArgumentException('Unexpected persisted resource.');
-
-        foreach (get_object_vars($source) as $property => $value) {
-            $target->{$property} = $value;
-        }
-    }
 }

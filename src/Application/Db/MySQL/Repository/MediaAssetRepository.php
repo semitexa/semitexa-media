@@ -10,6 +10,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
+use Semitexa\Orm\Query\SystemScopeToken;
 use Semitexa\Orm\Repository\DomainRepository;
 
 #[SatisfiesRepositoryContract(of: MediaAssetRepositoryInterface::class)]
@@ -21,6 +22,8 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
 
     private ?DomainRepository $repository = null;
 
+    private ?DomainRepository $system = null;
+
     protected function getResourceClass(): string
     {
         return MediaAssetResource::class;
@@ -29,23 +32,21 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
     public function findById(string $id): ?MediaAssetResource
     {
         /** @var MediaAssetResource|null */
-        return $this->repository()->findById($id);
+        return $this->system()->findById($id);
     }
 
-    public function save(MediaAssetResource $entity): void
+    public function save(MediaAssetResource $entity): MediaAssetResource
     {
-        $resource = $this->assertResourceType($entity);
-        $persisted = $resource->id !== '' && $this->repository()->findById($resource->id) !== null
-            ? $this->repository()->update($resource)
-            : $this->repository()->insert($resource);
-
-        $this->copyIntoMutableResource($persisted, $resource);
+        /** @var MediaAssetResource */
+        return $entity->id === ''
+            ? $this->system()->insert($entity)
+            : $this->system()->update($entity);
     }
 
     public function findByTenantAndCollection(string $tenantId, string $collectionKey, int $limit = 100): array
     {
         /** @var list<MediaAssetResource> */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaAssetResource::column('tenant_id'), Operator::Equals, $tenantId)
             ->where(MediaAssetResource::column('collection_key'), Operator::Equals, $collectionKey)
             ->limit($limit)
@@ -82,6 +83,18 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
         return (int) ($result->rows[0]['total'] ?? 0);
     }
 
+    /**
+     * SYSTEM-scope view — the media pipeline (worker, planner, recalculator)
+     * operates rows by their own ids across tenants; tenant-parameterised
+     * finders below scope with forTenant()/explicit predicates. The resources
+     * are #[TenantScoped], so any FUTURE finder must pick a posture — unscoped
+     * queries fail closed instead of leaking across tenants.
+     */
+    private function system(): DomainRepository
+    {
+        return $this->system ??= $this->repository()->withoutTenantScope(SystemScopeToken::issue());
+    }
+
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
@@ -100,12 +113,4 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
         return $this->orm()->getAdapter();
     }
 
-    private function copyIntoMutableResource(object $source, MediaAssetResource $target): void
-    {
-        $source instanceof MediaAssetResource || throw new \InvalidArgumentException('Unexpected persisted resource.');
-
-        foreach (get_object_vars($source) as $property => $value) {
-            $target->{$property} = $value;
-        }
-    }
 }

@@ -23,27 +23,24 @@ final class MediaAssetFactory
         string $tenantId,
         ?string $createdBy,
     ): MediaAssetResource {
-        $resource                   = new MediaAssetResource();
-        $resource->tenant_id        = $tenantId;
-        $resource->collection_key   = $collection->collectionKey;
-        $resource->storage_driver   = $storageDriver;
-        $resource->original_path    = $storagePath;
-        $resource->original_filename = $originalFilename;
-        $resource->mime_type        = $metadata->mimeType;
-        $resource->media_kind       = $collection->mediaKind->value;
-        $resource->visibility       = $collection->visibilityDefault->value;
-        $resource->status           = MediaAssetStatus::Pending->value;
-        $resource->byte_size        = $metadata->byteSize;
-        $resource->width            = $metadata->width;
-        $resource->height           = $metadata->height;
-        $resource->orientation      = $metadata->orientation;
-        $resource->sha256           = $metadata->sha256;
-        $resource->created_by       = $createdBy;
-
-        if ($metadata->extra !== []) {
-            $resource->metadata_json = json_encode($metadata->extra, JSON_THROW_ON_ERROR);
-        }
-
-        return $resource;
+        return new MediaAssetResource(
+            tenant_id: $tenantId,
+            collection_key: $collection->collectionKey,
+            storage_driver: $storageDriver,
+            original_path: $storagePath,
+            original_filename: $originalFilename,
+            mime_type: $metadata->mimeType,
+            media_kind: $collection->mediaKind->value,
+            visibility: $collection->visibilityDefault->value,
+            status: MediaAssetStatus::Pending->value,
+            byte_size: $metadata->byteSize,
+            width: $metadata->width,
+            height: $metadata->height,
+            orientation: $metadata->orientation,
+            sha256: $metadata->sha256,
+            created_by: $createdBy,
+            metadata_json: $metadata->extra !== []
+                ? json_encode($metadata->extra, JSON_THROW_ON_ERROR) : null,
+        );
     }
 }

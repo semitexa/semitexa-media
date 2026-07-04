@@ -38,21 +38,18 @@ final class MediaVariantPlanner
                 continue;
             }
 
-            $resource                       = new MediaVariantResource();
-            $resource->tenant_id            = $tenantId;
-            $resource->media_asset_id       = $assetId;
-            $resource->variant_key          = $preset->variantKey;
-            $resource->status               = MediaVariantStatus::Queued->value;
-            $resource->resize_mode          = $preset->mode->value;
-            $resource->target_width         = $preset->width;
-            $resource->target_height        = $preset->height;
-            $resource->quality              = $preset->quality;
-            $resource->max_attempts         = $maxAttempts;
-            $resource->queued_at            = new \DateTimeImmutable();
-
-            $this->variantRepository->save($resource);
-
-            $planned[] = $resource;
+            $planned[] = $this->variantRepository->save(new MediaVariantResource(
+                tenant_id: $tenantId,
+                media_asset_id: $assetId,
+                variant_key: $preset->variantKey,
+                status: MediaVariantStatus::Queued->value,
+                resize_mode: $preset->mode->value,
+                target_width: $preset->width,
+                target_height: $preset->height,
+                quality: $preset->quality,
+                max_attempts: $maxAttempts,
+                queued_at: new \DateTimeImmutable(),
+            ));
         }
 
         return $planned;

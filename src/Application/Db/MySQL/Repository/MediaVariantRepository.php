@@ -10,6 +10,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
+use Semitexa\Orm\Query\SystemScopeToken;
 use Semitexa\Orm\Repository\DomainRepository;
 
 #[SatisfiesRepositoryContract(of: MediaVariantRepositoryInterface::class)]
@@ -26,10 +27,12 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
 
     private ?DomainRepository $repository = null;
 
+    private ?DomainRepository $system = null;
+
     public function findByAssetAndKey(string $assetId, string $variantKey): ?MediaVariantResource
     {
         /** @var MediaVariantResource|null */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
             ->where(MediaVariantResource::column('variant_key'), Operator::Equals, $variantKey)
             ->fetchOneAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
@@ -38,19 +41,17 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
     public function findByAssetId(string $assetId): array
     {
         /** @var list<MediaVariantResource> */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
     }
 
-    public function save(MediaVariantResource $entity): void
+    public function save(MediaVariantResource $entity): MediaVariantResource
     {
-        $resource = $this->assertResourceType($entity);
-        $persisted = $resource->id === ''
-            ? $this->repository()->insert($resource)
-            : $this->repository()->update($resource);
-
-        $this->copyIntoMutableResource($persisted, $resource);
+        /** @var MediaVariantResource */
+        return $entity->id === ''
+            ? $this->system()->insert($entity)
+            : $this->system()->update($entity);
     }
 
     public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariantResource
@@ -83,7 +84,7 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
         );
 
         /** @var MediaVariantResource|null */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaVariantResource::column('lease_owner'), Operator::Equals, $leaseOwner)
             ->where(MediaVariantResource::column('status'), Operator::Equals, 'processing')
             ->fetchOneAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
@@ -92,7 +93,7 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
     public function findFailed(int $limit = 100): array
     {
         /** @var list<MediaVariantResource> */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaVariantResource::column('status'), Operator::Equals, 'failed')
             ->limit($limit)
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
@@ -101,10 +102,22 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
     public function findFailedByAssetId(string $assetId): array
     {
         /** @var list<MediaVariantResource> */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaVariantResource::column('media_asset_id'), Operator::Equals, $assetId)
             ->where(MediaVariantResource::column('status'), Operator::Equals, 'failed')
             ->fetchAllAs(MediaVariantResource::class, $this->orm()->getMapperRegistry());
+    }
+
+    /**
+     * SYSTEM-scope view — the media pipeline (worker, planner, recalculator)
+     * operates rows by their own ids across tenants; tenant-parameterised
+     * finders below scope with forTenant()/explicit predicates. The resources
+     * are #[TenantScoped], so any FUTURE finder must pick a posture — unscoped
+     * queries fail closed instead of leaking across tenants.
+     */
+    private function system(): DomainRepository
+    {
+        return $this->system ??= $this->repository()->withoutTenantScope(SystemScopeToken::issue());
     }
 
     private function repository(): DomainRepository
@@ -125,12 +138,4 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
         return $this->orm()->getAdapter();
     }
 
-    private function copyIntoMutableResource(object $source, MediaVariantResource $target): void
-    {
-        $source instanceof MediaVariantResource || throw new \InvalidArgumentException('Unexpected persisted resource.');
-
-        foreach (get_object_vars($source) as $property => $value) {
-            $target->{$property} = $value;
-        }
-    }
 }

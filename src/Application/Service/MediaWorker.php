@@ -112,18 +112,16 @@ final class MediaWorker
             return;
         }
 
-        // Mark as processing
-        $variant->status               = MediaVariantStatus::Processing->value;
-        $variant->lease_owner          = $this->workerId;
-        $variant->lease_expires_at     = new \DateTimeImmutable('+5 minutes');
-        $variant->last_attempt_at      = new \DateTimeImmutable();
-        $variant->attempt_count       += 1;
-
-        if ($variant->processing_started_at === null) {
-            $variant->processing_started_at = new \DateTimeImmutable();
-        }
-
-        $this->variantRepository->save($variant);
+        // Mark as processing (resources are readonly — continue with the row
+        // returned by save()).
+        $variant = $this->variantRepository->save($variant->copyWith([
+            'status' => MediaVariantStatus::Processing->value,
+            'lease_owner' => $this->workerId,
+            'lease_expires_at' => new \DateTimeImmutable('+5 minutes'),
+            'last_attempt_at' => new \DateTimeImmutable(),
+            'attempt_count' => $variant->attempt_count + 1,
+            'processing_started_at' => $variant->processing_started_at ?? new \DateTimeImmutable(),
+        ]));
 
         try {
             $collection = $this->collectionResolver->resolve(
@@ -161,30 +159,30 @@ final class MediaWorker
 
     private function markVariantReady(MediaVariantResource $variant, \Semitexa\Media\Domain\Model\VariantGenerationResult $result): void
     {
-        $variant->status         = MediaVariantStatus::Ready->value;
-        $variant->storage_path   = $result->storagePath;
-        $variant->mime_type      = $result->mimeType;
-        $variant->byte_size      = $result->byteSize;
-        $variant->actual_width   = $result->actualWidth;
-        $variant->actual_height  = $result->actualHeight;
-        $variant->generated_at   = new \DateTimeImmutable();
-        $variant->lease_owner    = null;
-        $variant->lease_expires_at = null;
-        $variant->error_code     = null;
-        $variant->error_message  = null;
-
-        $this->variantRepository->save($variant);
+        $this->variantRepository->save($variant->copyWith([
+            'status' => MediaVariantStatus::Ready->value,
+            'storage_path' => $result->storagePath,
+            'mime_type' => $result->mimeType,
+            'byte_size' => $result->byteSize,
+            'actual_width' => $result->actualWidth,
+            'actual_height' => $result->actualHeight,
+            'generated_at' => new \DateTimeImmutable(),
+            'lease_owner' => null,
+            'lease_expires_at' => null,
+            'error_code' => null,
+            'error_message' => null,
+        ]));
     }
 
     private function failVariant(MediaVariantResource $variant, string $errorCode, string $errorMessage): void
     {
-        $variant->status        = MediaVariantStatus::Failed->value;
-        $variant->error_code    = $errorCode;
-        $variant->error_message = $errorMessage;
-        $variant->lease_owner   = null;
-        $variant->lease_expires_at = null;
-
-        $this->variantRepository->save($variant);
+        $this->variantRepository->save($variant->copyWith([
+            'status' => MediaVariantStatus::Failed->value,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+            'lease_owner' => null,
+            'lease_expires_at' => null,
+        ]));
     }
 
     private function log(string $message, string $level = 'info'): void

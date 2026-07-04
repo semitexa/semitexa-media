@@ -15,7 +15,11 @@ interface MediaVariantRepositoryInterface
      */
     public function findByAssetId(string $assetId): array;
 
-    public function save(MediaVariantResource $entity): void;
+    /**
+     * Persist and RETURN the stored row — resources are readonly; the write
+     * engine's generated id/state comes back on a fresh instance.
+     */
+    public function save(MediaVariantResource $entity): MediaVariantResource;
 
     /**
      * Atomically claim the next queued variant for processing.

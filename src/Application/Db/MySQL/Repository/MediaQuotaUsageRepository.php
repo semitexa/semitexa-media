@@ -10,6 +10,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageResource;
 use Semitexa\Media\Domain\Contract\MediaQuotaUsageRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
+use Semitexa\Orm\Query\SystemScopeToken;
 use Semitexa\Orm\Repository\DomainRepository;
 
 #[SatisfiesRepositoryContract(of: MediaQuotaUsageRepositoryInterface::class)]
@@ -26,23 +27,23 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
 
     private ?DomainRepository $repository = null;
 
+    private ?DomainRepository $system = null;
+
     public function findByBucket(string $tenantId, string $quotaBucket): ?MediaQuotaUsageResource
     {
         /** @var MediaQuotaUsageResource|null */
-        return $this->repository()->query()
+        return $this->system()->query()
             ->where(MediaQuotaUsageResource::column('tenant_id'), Operator::Equals, $tenantId)
             ->where(MediaQuotaUsageResource::column('quota_bucket'), Operator::Equals, $quotaBucket)
             ->fetchOneAs(MediaQuotaUsageResource::class, $this->orm()->getMapperRegistry());
     }
 
-    public function save(MediaQuotaUsageResource $entity): void
+    public function save(MediaQuotaUsageResource $entity): MediaQuotaUsageResource
     {
-        $resource = $this->assertResourceType($entity);
-        $persisted = $resource->id === ''
-            ? $this->repository()->insert($resource)
-            : $this->repository()->update($resource);
-
-        $this->copyIntoMutableResource($persisted, $resource);
+        /** @var MediaQuotaUsageResource */
+        return $entity->id === ''
+            ? $this->system()->insert($entity)
+            : $this->system()->update($entity);
     }
 
     public function incrementUsage(string $tenantId, string $quotaBucket, int $byteSize): void
@@ -68,6 +69,18 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
         );
     }
 
+    /**
+     * SYSTEM-scope view — the media pipeline (worker, planner, recalculator)
+     * operates rows by their own ids across tenants; tenant-parameterised
+     * finders below scope with forTenant()/explicit predicates. The resources
+     * are #[TenantScoped], so any FUTURE finder must pick a posture — unscoped
+     * queries fail closed instead of leaking across tenants.
+     */
+    private function system(): DomainRepository
+    {
+        return $this->system ??= $this->repository()->withoutTenantScope(SystemScopeToken::issue());
+    }
+
     private function repository(): DomainRepository
     {
         return $this->repository ??= $this->orm()->repository(
@@ -86,12 +99,4 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
         return $this->orm()->getAdapter();
     }
 
-    private function copyIntoMutableResource(object $source, MediaQuotaUsageResource $target): void
-    {
-        $source instanceof MediaQuotaUsageResource || throw new \InvalidArgumentException('Unexpected persisted resource.');
-
-        foreach (get_object_vars($source) as $property => $value) {
-            $target->{$property} = $value;
-        }
-    }
 }
