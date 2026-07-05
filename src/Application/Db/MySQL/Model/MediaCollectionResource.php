@@ -10,6 +10,7 @@ use Semitexa\Orm\Attribute\FromTable;
 use Semitexa\Orm\Attribute\Index;
 use Semitexa\Orm\Attribute\PrimaryKey;
 use Semitexa\Orm\Metadata\HasColumnReferences;
+use Semitexa\Orm\Metadata\HasCopyWith;
 use Semitexa\Orm\Metadata\HasRelationReferences;
 
 #[FromTable(name: 'media_collections')]
@@ -19,6 +20,7 @@ use Semitexa\Orm\Metadata\HasRelationReferences;
 final readonly class MediaCollectionResource
 {
     use HasColumnReferences;
+    use HasCopyWith;
     use HasRelationReferences;
 
     public function __construct(
@@ -79,11 +81,4 @@ final readonly class MediaCollectionResource
      *
      * @param array<string, mixed> $overrides
      */
-    public function copyWith(array $overrides): self
-    {
-        $overrides += ['updated_at' => new \DateTimeImmutable()];
-
-        return new self(...array_merge(get_object_vars($this), $overrides));
-    }
-
 }
