@@ -28,18 +28,13 @@ final class MediaQuotaRecalculator
         $totalBytes = $this->assetRepository->sumOriginalBytesByBucket($tenantId, $quotaBucket);
         $totalCount = $this->assetRepository->countByBucket($tenantId, $quotaBucket);
 
-        $resource = $this->quotaRepository->findByBucket($tenantId, $quotaBucket);
+        $resource = $this->quotaRepository->findByBucket($tenantId, $quotaBucket)
+            ?? new MediaQuotaUsageResource(tenant_id: $tenantId, quota_bucket: $quotaBucket);
 
-        if ($resource === null) {
-            $resource               = new MediaQuotaUsageResource();
-            $resource->tenant_id    = $tenantId;
-            $resource->quota_bucket = $quotaBucket;
-        }
-
-        $resource->original_bytes       = $totalBytes;
-        $resource->asset_count          = $totalCount;
-        $resource->last_recalculated_at = new \DateTimeImmutable();
-
-        $this->quotaRepository->save($resource);
+        $this->quotaRepository->save($resource->copyWith([
+            'original_bytes' => $totalBytes,
+            'asset_count' => $totalCount,
+            'last_recalculated_at' => new \DateTimeImmutable(),
+        ]));
     }
 }

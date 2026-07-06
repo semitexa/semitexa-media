@@ -10,7 +10,11 @@ interface MediaQuotaUsageRepositoryInterface
 {
     public function findByBucket(string $tenantId, string $quotaBucket): ?MediaQuotaUsageResource;
 
-    public function save(MediaQuotaUsageResource $entity): void;
+    /**
+     * Persist and RETURN the stored row — resources are readonly; the write
+     * engine's generated id/state comes back on a fresh instance.
+     */
+    public function save(MediaQuotaUsageResource $entity): MediaQuotaUsageResource;
 
     public function incrementUsage(string $tenantId, string $quotaBucket, int $byteSize): void;
 

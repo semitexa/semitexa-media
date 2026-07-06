@@ -10,7 +10,11 @@ interface MediaAssetRepositoryInterface
 {
     public function findById(string $id): ?MediaAssetResource;
 
-    public function save(MediaAssetResource $entity): void;
+    /**
+     * Persist and RETURN the stored row — resources are readonly; the write
+     * engine's generated id/state comes back on a fresh instance.
+     */
+    public function save(MediaAssetResource $entity): MediaAssetResource;
 
     /**
      * @return MediaAssetResource[]

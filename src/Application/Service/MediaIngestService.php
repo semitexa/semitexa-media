@@ -89,10 +89,8 @@ final class MediaIngestService
             tenantId:        $tenantId,
             createdBy:       $createdBy,
         );
-        // Set the pre-generated ID
-        $resource->id = $assetId;
-
-        $this->assetRepository->save($resource);
+        // Pin the pre-generated ID (readonly resource — rebuild the row).
+        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -167,9 +165,7 @@ final class MediaIngestService
             tenantId:        $tenantId,
             createdBy:       $createdBy,
         );
-        $resource->id = $assetId;
-
-        $this->assetRepository->save($resource);
+        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -235,9 +231,10 @@ final class MediaIngestService
 
     private function markReady(MediaAssetResource $resource): void
     {
-        $resource->status   = MediaAssetStatus::Ready->value;
-        $resource->ready_at = new \DateTimeImmutable();
-        $this->assetRepository->save($resource);
+        $this->assetRepository->save($resource->copyWith([
+            'status' => MediaAssetStatus::Ready->value,
+            'ready_at' => new \DateTimeImmutable(),
+        ]));
     }
 
     private function generateAssetId(): string
