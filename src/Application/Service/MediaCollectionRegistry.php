@@ -91,7 +91,13 @@ final class MediaCollectionRegistry
         $this->providersLoaded = true;
 
         foreach ($this->classDiscovery->findClassesWithAttribute(AsMediaCollectionProvider::class) as $class) {
-            $provider = ContainerFactory::get()->get($class);
+            // Providers are usually pure definition holders; #[AsService]
+            // is only needed when the provider wants injected dependencies.
+            try {
+                $provider = ContainerFactory::get()->get($class);
+            } catch (\Throwable) {
+                $provider = new $class();
+            }
             if (!$provider instanceof MediaCollectionProviderInterface) {
                 continue;
             }
