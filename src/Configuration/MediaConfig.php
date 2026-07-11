@@ -8,16 +8,19 @@ use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Environment;
 
 #[AsService]
-final readonly class MediaConfig
+final class MediaConfig
 {
-    public string $workerQueue;
-    public string $workerTransport;
-    public int $variantMaxAttempts;
-    public int $variantRetryDelay;
-    public int $defaultJpegQuality;
-    public int $defaultWebpQuality;
-    public string $publicBaseUrl;
-    public string $storageDriver;
+    // Defaults duplicated from the env fallbacks below: the DI container may
+    // materialize attribute-style services without running the constructor,
+    // and readonly constructor-only props then explode on first access.
+    public string $workerQueue = 'media';
+    public string $workerTransport = '';
+    public int $variantMaxAttempts = 3;
+    public int $variantRetryDelay = 30;
+    public int $defaultJpegQuality = 85;
+    public int $defaultWebpQuality = 82;
+    public string $publicBaseUrl = '';
+    public string $storageDriver = 'local';
 
     public function __construct()
     {
