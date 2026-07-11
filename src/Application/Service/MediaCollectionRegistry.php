@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Container\ContainerFactory;
+use Semitexa\Core\Discovery\ClassDiscovery;
+use Semitexa\Media\Attribute\AsMediaCollectionProvider;
+use Semitexa\Media\Domain\Contract\MediaCollectionProviderInterface;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Enum\MediaKind;
 use Semitexa\Media\Domain\Enum\MediaVisibility;
@@ -13,14 +18,25 @@ use Semitexa\Media\Domain\Model\ImageTransformPreset;
 /**
  * Holds code-defined collection definitions.
  *
- * Collections are registered at boot time by application modules.
+ * Two registration channels:
+ *  - imperative register() calls (e.g. from server lifecycle listeners);
+ *  - lazy discovery of #[AsMediaCollectionProvider] classes on first read,
+ *    which works in EVERY process type — console commands and queue workers
+ *    never see server lifecycle events, and previously started with an
+ *    empty registry (every variant failed with «collection not found»).
+ *
  * Each definition is an array that matches the MediaCollection constructor arguments.
  */
 #[AsService]
 final class MediaCollectionRegistry
 {
+    #[InjectAsReadonly]
+    protected ClassDiscovery $classDiscovery;
+
     /** @var array<string, array<string, mixed>> */
     private array $definitions = [];
+
+    private bool $providersLoaded = false;
 
     /**
      * Register a collection definition.
@@ -38,11 +54,15 @@ final class MediaCollectionRegistry
 
     public function has(string $collectionKey): bool
     {
+        $this->loadProviders();
+
         return isset($this->definitions[$collectionKey]);
     }
 
     public function get(string $collectionKey): ?MediaCollection
     {
+        $this->loadProviders();
+
         if (!isset($this->definitions[$collectionKey])) {
             return null;
         }
@@ -53,12 +73,36 @@ final class MediaCollectionRegistry
     /** @return MediaCollection[] */
     public function all(): array
     {
+        $this->loadProviders();
+
         $collections = [];
         foreach ($this->definitions as $definition) {
             $collections[] = $this->buildFromDefinition($definition);
         }
 
         return $collections;
+    }
+
+    private function loadProviders(): void
+    {
+        if ($this->providersLoaded || !isset($this->classDiscovery)) {
+            return;
+        }
+        $this->providersLoaded = true;
+
+        foreach ($this->classDiscovery->findClassesWithAttribute(AsMediaCollectionProvider::class) as $class) {
+            $provider = ContainerFactory::get()->get($class);
+            if (!$provider instanceof MediaCollectionProviderInterface) {
+                continue;
+            }
+            foreach ($provider->collections() as $definition) {
+                // Imperative register() wins over provider definitions.
+                $key = $definition['collectionKey'] ?? null;
+                if ($key !== null && !isset($this->definitions[$key])) {
+                    $this->register($definition);
+                }
+            }
+        }
     }
 
     private function buildFromDefinition(array $def): MediaCollection

@@ -31,9 +31,9 @@ final class MediaQueueDispatcher
         $payload = TenantAwareJobSerializer::wrap($message->jsonSerialize());
 
         $transport = QueueTransportRegistry::create(
-            $this->config->workerTransport ?: QueueConfig::defaultTransport(),
+            $this->config->workerTransport() ?: QueueConfig::defaultTransport(),
         );
 
-        $transport->publish($this->config->workerQueue, json_encode($payload, JSON_THROW_ON_ERROR));
+        $transport->publish($this->config->workerQueue(), json_encode($payload, JSON_THROW_ON_ERROR));
     }
 }

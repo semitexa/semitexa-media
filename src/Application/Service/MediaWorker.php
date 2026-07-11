@@ -48,7 +48,7 @@ final class MediaWorker
     {
         $this->initializeWorkerId();
         $this->currentTransport = $transportName ?: QueueConfig::defaultTransport();
-        $queue = $queueName ?: $this->config->workerQueue;
+        $queue = $queueName ?: $this->config->workerQueue();
 
         $transport = QueueTransportRegistry::create($this->currentTransport);
 

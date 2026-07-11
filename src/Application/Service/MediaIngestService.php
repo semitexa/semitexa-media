@@ -84,7 +84,7 @@ final class MediaIngestService
             metadata:        $metadata,
             originalFilename: $originalName,
             storagePath:     $storagePath,
-            storageDriver:   $this->config->storageDriver,
+            storageDriver:   $this->config->storageDriver(),
             collection:      $collection,
             tenantId:        $tenantId,
             createdBy:       $createdBy,
@@ -98,7 +98,7 @@ final class MediaIngestService
             $assetId,
             $tenantId,
             $collection,
-            $this->config->variantMaxAttempts,
+            $this->config->variantMaxAttempts(),
         );
 
         foreach ($variantResources as $variant) {
@@ -173,7 +173,7 @@ final class MediaIngestService
             $assetId,
             $tenantId,
             $collection,
-            $this->config->variantMaxAttempts,
+            $this->config->variantMaxAttempts(),
         );
 
         foreach ($variantResources as $variant) {
