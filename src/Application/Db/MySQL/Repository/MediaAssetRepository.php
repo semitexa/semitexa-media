@@ -37,8 +37,17 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
 
     public function save(MediaAssetResource $entity): MediaAssetResource
     {
+        if ($entity->id === '') {
+            /** @var MediaAssetResource */
+            return $this->system()->insert($entity);
+        }
+
+        // Ingest pins a pre-generated id on a brand-new resource (readonly
+        // model — the row is rebuilt via copyWith). Route by actual
+        // existence, otherwise the first save() becomes a silent 0-row
+        // UPDATE and the asset never lands.
         /** @var MediaAssetResource */
-        return $entity->id === ''
+        return $this->findById($entity->id) === null
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }
