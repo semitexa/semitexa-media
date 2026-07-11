@@ -53,8 +53,8 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
              VALUES (:tenant_id, :quota_bucket, 1, :byte_size, 0)
              ON DUPLICATE KEY UPDATE
                  asset_count = asset_count + 1,
-                 original_bytes = original_bytes + :byte_size',
-            ['tenant_id' => $tenantId, 'quota_bucket' => $quotaBucket, 'byte_size' => $byteSize],
+                 original_bytes = original_bytes + :byte_size_inc',
+            ['tenant_id' => $tenantId, 'quota_bucket' => $quotaBucket, 'byte_size' => $byteSize, 'byte_size_inc' => $byteSize],
         );
     }
 
