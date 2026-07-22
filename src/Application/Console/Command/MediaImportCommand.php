@@ -9,6 +9,7 @@ use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Console\BaseCommand;
 use Semitexa\Media\Application\Service\MediaCollectionPolicyResolver;
 use Semitexa\Media\Application\Service\MediaIngestService;
+use Semitexa\Media\Application\Service\MediaWorker;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Symfony\Component\Console\Command\Command;
@@ -29,6 +30,9 @@ final class MediaImportCommand extends BaseCommand
 
     #[InjectAsReadonly]
     protected MediaAssetRepositoryInterface $assetRepository;
+
+    #[InjectAsReadonly]
+    protected MediaWorker $worker;
 
     protected function configure(): void
     {
@@ -81,6 +85,11 @@ final class MediaImportCommand extends BaseCommand
                 name:        'dry-run',
                 mode:        InputOption::VALUE_NONE,
                 description: 'Report what would be ingested without writing anything',
+            )
+            ->addOption(
+                name:        'sync',
+                mode:        InputOption::VALUE_NONE,
+                description: 'Generate queued variants immediately after import (broker-less mode, same as running media:drain)',
             );
     }
 
@@ -210,8 +219,20 @@ final class MediaImportCommand extends BaseCommand
             return Command::FAILURE;
         }
 
-        if (!$dryRun && $ingested > 0) {
-            $io->success("Ingested {$ingested} asset(s); variants are queued — run 'media:work' to generate them.");
+        if (!$dryRun && $ingested > 0 && $input->getOption('sync')) {
+            $this->worker->setOutput($output);
+            $drained = $this->worker->drain();
+            $io->definitionList(
+                ['Variants generated' => $drained['processed']],
+                ['Variants failed' => $drained['failed']],
+            );
+            if ($drained['failed'] > 0) {
+                $io->warning("Some variants failed — inspect with 'media:failed-variants'.");
+                return Command::FAILURE;
+            }
+            $io->success("Ingested {$ingested} asset(s) and generated {$drained['processed']} variant(s).");
+        } elseif (!$dryRun && $ingested > 0) {
+            $io->success("Ingested {$ingested} asset(s); variants are queued — run 'media:work' or 'media:drain' to generate them.");
         } else {
             $io->success('Done.');
         }
