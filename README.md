@@ -19,7 +19,8 @@ Depends on Core, ORM, Storage, and Tenancy. Uses the Scheduler for async variant
 - Per-tenant quota tracking and enforcement
 - CDN-ready delivery URL generation
 - ORM-backed asset records (`MediaAssetResource`, `MediaVariantResource`, `MediaQuotaUsageResource`)
-- CLI commands: `media:work`, `media:regenerate`, `media:failed-variants`, `media:quota:recalculate`
+- CLI commands: `media:work`, `media:import`, `media:regenerate`, `media:failed-variants`, `media:quota:recalculate`
+- Bulk backfill: `media:import <dir> -c <collection> --tenant <id>` ingests pre-existing files (legacy CMS uploads) with sha256 dedup, `--dry-run`, `--ext` filter, and resumable `--limit` batches
 
 ## Notes
 

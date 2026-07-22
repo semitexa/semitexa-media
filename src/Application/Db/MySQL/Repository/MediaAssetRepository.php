@@ -62,6 +62,19 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
             ->fetchAllAs(MediaAssetResource::class, $this->orm()->getMapperRegistry());
     }
 
+    public function findByTenantAndSha256(string $tenantId, string $sha256): ?MediaAssetResource
+    {
+        /** @var list<MediaAssetResource> $rows */
+        $rows = $this->system()->query()
+            ->where(MediaAssetResource::column('tenant_id'), Operator::Equals, $tenantId)
+            ->where(MediaAssetResource::column('sha256'), Operator::Equals, $sha256)
+            ->where(MediaAssetResource::column('status'), Operator::NotEquals, 'deleted')
+            ->limit(1)
+            ->fetchAllAs(MediaAssetResource::class, $this->orm()->getMapperRegistry());
+
+        return $rows[0] ?? null;
+    }
+
     public function sumOriginalBytesByBucket(string $tenantId, string $quotaBucket): int
     {
         $result = $this->adapter()->execute(

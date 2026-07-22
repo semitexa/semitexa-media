@@ -21,6 +21,12 @@ interface MediaAssetRepositoryInterface
      */
     public function findByTenantAndCollection(string $tenantId, string $collectionKey, int $limit = 100): array;
 
+    /**
+     * Content-hash lookup for ingest dedup; deleted assets do not count,
+     * so a re-import after deletion produces a fresh asset.
+     */
+    public function findByTenantAndSha256(string $tenantId, string $sha256): ?MediaAssetResource;
+
     public function sumOriginalBytesByBucket(string $tenantId, string $quotaBucket): int;
 
     public function countByBucket(string $tenantId, string $quotaBucket): int;
