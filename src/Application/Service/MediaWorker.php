@@ -6,6 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
@@ -57,6 +58,41 @@ final class MediaWorker
         $transport->consume($queue, function (string $payload): void {
             $this->processPayload($payload);
         });
+    }
+
+    /**
+     * Broker-less mode: claim queued (or lease-expired) variants straight from
+     * the database and transform them until the backlog is empty. The bridge
+     * for projects without a queue broker — pairs with 'media:drain' and
+     * 'media:import --sync'.
+     *
+     * @return array{processed: int, failed: int}
+     */
+    public function drain(?int $limit = null): array
+    {
+        $this->initializeWorkerId();
+
+        $processed = 0;
+        $failed    = 0;
+
+        while ($limit === null || ($processed + $failed) < $limit) {
+            $variant = $this->variantRepository->claimNext($this->workerId);
+            if ($variant === null) {
+                break;
+            }
+
+            $asset = $this->assetRepository->findById($variant->media_asset_id);
+            if ($asset === null) {
+                $this->failVariant($variant, 'asset_not_found', "Asset '{$variant->media_asset_id}' not found.");
+                $this->log("Asset '{$variant->media_asset_id}' not found — variant '{$variant->variant_key}' failed.", 'warning');
+                $failed++;
+                continue;
+            }
+
+            $this->transformVariant($asset, $variant) ? $processed++ : $failed++;
+        }
+
+        return ['processed' => $processed, 'failed' => $failed];
     }
 
     public function processPayload(string $payload): void
@@ -123,6 +159,15 @@ final class MediaWorker
             'processing_started_at' => $variant->processing_started_at ?? new \DateTimeImmutable(),
         ]));
 
+        $this->transformVariant($asset, $variant);
+    }
+
+    /**
+     * Shared transform tail for both the queue path (processMessage) and the
+     * DB-claim path (drain): the variant must already be marked processing.
+     */
+    private function transformVariant(MediaAssetResource $asset, MediaVariantResource $variant): bool
+    {
         try {
             $collection = $this->collectionResolver->resolve(
                 $asset->collection_key,
@@ -130,31 +175,33 @@ final class MediaWorker
             );
         } catch (\Throwable $e) {
             $this->failVariant($variant, 'collection_not_found', $e->getMessage());
-            $this->log("Collection not found for asset '{$message->assetId}': {$e->getMessage()}", 'error');
-            return;
+            $this->log("Collection not found for asset '{$variant->media_asset_id}': {$e->getMessage()}", 'error');
+            return false;
         }
 
         try {
             $result = $this->transformationService->generateVariant(
                 originalPath: $asset->original_path,
-                assetId:      $message->assetId,
+                assetId:      $variant->media_asset_id,
                 tenantId:     $asset->tenant_id ?? '',
                 variant:      $variant,
                 collection:   $collection,
             );
         } catch (\Throwable $e) {
             $this->failVariant($variant, 'processing_error', $e->getMessage());
-            $this->log("Transform failed for '{$message->assetId}/{$message->variantKey}': {$e->getMessage()}", 'error');
-            return;
+            $this->log("Transform failed for '{$variant->media_asset_id}/{$variant->variant_key}': {$e->getMessage()}", 'error');
+            return false;
         }
 
         if ($result->success) {
             $this->markVariantReady($variant, $result);
-            $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' generated successfully.", 'success');
-        } else {
-            $this->failVariant($variant, $result->errorCode ?? 'unknown', $result->errorMessage ?? '');
-            $this->log("Variant '{$message->variantKey}' failed: {$result->errorMessage}", 'error');
+            $this->log("Variant '{$variant->variant_key}' for asset '{$variant->media_asset_id}' generated successfully.", 'success');
+            return true;
         }
+
+        $this->failVariant($variant, $result->errorCode ?? 'unknown', $result->errorMessage ?? '');
+        $this->log("Variant '{$variant->variant_key}' failed: {$result->errorMessage}", 'error');
+        return false;
     }
 
     private function markVariantReady(MediaVariantResource $variant, \Semitexa\Media\Domain\Model\VariantGenerationResult $result): void

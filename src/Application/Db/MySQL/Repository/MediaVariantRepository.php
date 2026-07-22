@@ -64,13 +64,13 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
              SET status = 'processing',
                  lease_owner = :lease_owner,
                  lease_expires_at = :lease_expires_at,
-                 last_attempt_at = :now,
+                 last_attempt_at = :now_attempt,
                  attempt_count = attempt_count + 1,
-                 processing_started_at = CASE WHEN processing_started_at IS NULL THEN :now ELSE processing_started_at END
+                 processing_started_at = CASE WHEN processing_started_at IS NULL THEN :now_started ELSE processing_started_at END
              WHERE id = (
                  SELECT id FROM (
                      SELECT id FROM media_variants
-                     WHERE (status = 'queued' OR (status = 'processing' AND lease_expires_at < :now))
+                     WHERE (status = 'queued' OR (status = 'processing' AND lease_expires_at < :now_stale))
                        AND attempt_count < max_attempts
                      ORDER BY queued_at ASC
                      LIMIT 1
@@ -79,7 +79,11 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
             [
                 'lease_owner' => $leaseOwner,
                 'lease_expires_at' => $leaseExpires,
-                'now' => $now,
+                // Native prepared statements (ATTR_EMULATE_PREPARES=false)
+                // reject a named placeholder bound once but used repeatedly.
+                'now_attempt' => $now,
+                'now_started' => $now,
+                'now_stale' => $now,
             ],
         );
 
