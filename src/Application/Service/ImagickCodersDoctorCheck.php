@@ -28,23 +28,34 @@ final class ImagickCodersDoctorCheck implements DoctorCheckInterface
             );
         }
 
-        $missing = [];
-        foreach (self::REQUIRED_FORMATS as $format) {
-            if (\Imagick::queryFormats($format) === []) {
-                $missing[] = $format;
+        // A broken delegate setup can make the probe itself throw — that is
+        // still an unhealthy environment, so report it as a failed check with
+        // a hint instead of leaning on the generic runner catch.
+        try {
+            $missing = [];
+            foreach (self::REQUIRED_FORMATS as $format) {
+                if (\Imagick::queryFormats($format) === []) {
+                    $missing[] = $format;
+                }
             }
+            $version = \Imagick::getVersion()['versionString'] ?? 'unknown version';
+        } catch (\Throwable $e) {
+            return DoctorResult::fail(
+                'Imagick probe failed: ' . $e->getMessage(),
+                'The ImageMagick delegate setup looks broken — reinstall the imagemagick packages '
+                . 'and rebuild the app image from the current Semitexa scaffold Dockerfile.',
+            );
         }
 
         if ($missing !== []) {
             return DoctorResult::fail(
                 'Imagick lacks format coder(s): ' . implode(', ', $missing)
                 . ' — variant transforms will fail with "Unable to set image format".',
-                'On Alpine: apk add imagemagick-webp imagemagick-jpeg imagemagick-heic '
-                . '(baked into the Semitexa scaffold Dockerfile since 2026-07-22), then restart the container.',
+                'On Alpine: apk add imagemagick imagemagick-webp imagemagick-jpeg imagemagick-heic '
+                . '(coders baked into the Semitexa scaffold Dockerfile since 2026-07-22; the base '
+                . 'imagemagick package provides PNG), then restart the container.',
             );
         }
-
-        $version = \Imagick::getVersion()['versionString'] ?? 'unknown version';
 
         return DoctorResult::pass(implode('/', self::REQUIRED_FORMATS) . " coders present ({$version}).");
     }
