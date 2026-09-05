@@ -50,7 +50,7 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
     public function save(MediaVariant $entity): MediaVariant
     {
         /** @var MediaVariant */
-        return $entity->id === ''
+        return $entity->getId() === ''
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }

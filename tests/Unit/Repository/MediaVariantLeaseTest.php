@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Tests\Unit\Repository;
 
+use Semitexa\Media\Domain\Model\MediaVariant;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Semitexa\Media\Application\Db\MySQL\Repository\MediaVariantRepository;
@@ -140,13 +141,9 @@ final class MediaVariantLeaseTest extends TestCase
         self::assertNull($again, 'nothing is queued; the worker must not be handed its own in-flight variant');
     }
 
-    private function idOf(?object $variant): ?string
+    private function idOf(?MediaVariant $variant): ?string
     {
-        if ($variant === null) {
-            return null;
-        }
-
-        return method_exists($variant, 'getId') ? $variant->getId() : $variant->id;
+        return $variant?->getId();
     }
 
     /** @return array<string, mixed> */
