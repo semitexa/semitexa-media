@@ -7,41 +7,29 @@ namespace Semitexa\Media\Application\Service;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
 use Semitexa\Media\Domain\Contract\MediaUrlGeneratorInterface;
-use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
-use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
-use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Storage\Contract\StorageObjectStoreInterface;
 
 #[SatisfiesServiceContract(of: MediaUrlGeneratorInterface::class)]
 final class MediaUrlGenerator implements MediaUrlGeneratorInterface
 {
     #[InjectAsReadonly]
-    protected MediaAssetRepositoryInterface $assetRepository;
-
-    #[InjectAsReadonly]
-    protected MediaVariantRepositoryInterface $variantRepository;
+    protected MediaObjectLocator $locator;
 
     #[InjectAsReadonly]
     protected StorageObjectStoreInterface $storage;
 
     public function url(string $assetId, ?string $variantKey = null): string
     {
-        if ($variantKey !== null) {
-            $variant = $this->variantRepository->findByAssetAndKey($assetId, $variantKey);
+        $object = $this->locator->locate($assetId, $variantKey);
 
-            if ($variant !== null && $variant->getStatus() === MediaVariantStatus::Ready->value && $variant->getStoragePath() !== null) {
-                return $this->addVersioning($this->storage->url($variant->getStoragePath()), $variant->getGeneratedAt());
-            }
-        }
-
-        // Fall back to original
-        $asset = $this->assetRepository->findById($assetId);
-
-        if ($asset === null) {
+        if ($object === null) {
             return '';
         }
 
-        return $this->addVersioning($this->storage->url($asset->getOriginalPath()), $asset->getReadyAt() ?? $asset->getCreatedAt() ?? null);
+        // Empty when the driver has no public URL for its objects — the local
+        // driver without STORAGE_LOCAL_PUBLIC_URL. Callers read that as "not
+        // publicly addressable" and serve the bytes themselves.
+        return $this->addVersioning($this->storage->url($object->path), $object->version);
     }
 
     private function addVersioning(string $url, ?\DateTimeImmutable $timestamp): string
