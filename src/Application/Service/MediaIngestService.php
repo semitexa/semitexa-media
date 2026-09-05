@@ -108,7 +108,7 @@ final class MediaIngestService
                 // Log dispatch failure but do not fail ingest — variants can be retried
                 $this->logger->error('Media queue dispatch failed', [
                     'asset_id' => $assetId,
-                    'variant_key' => $variant->variant_key,
+                    'variant_key' => $variant->getVariantKey(),
                     'exception' => $e::class,
                     'message' => $e->getMessage(),
                 ]);
@@ -182,7 +182,7 @@ final class MediaIngestService
             } catch (\Throwable $e) {
                 $this->logger->error('Media queue dispatch failed', [
                     'asset_id' => $assetId,
-                    'variant_key' => $variant->variant_key,
+                    'variant_key' => $variant->getVariantKey(),
                     'exception' => $e::class,
                     'message' => $e->getMessage(),
                 ]);
