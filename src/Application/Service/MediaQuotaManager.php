@@ -25,8 +25,8 @@ final class MediaQuotaManager implements MediaQuotaManagerInterface
         $bucket = $collection->quotaBucket;
         $usage  = $this->quotaRepository->findByBucket($tenantId, $bucket);
 
-        $currentBytes = $usage?->original_bytes ?? 0;
-        $currentCount = $usage?->asset_count ?? 0;
+        $currentBytes = $usage?->getOriginalBytes() ?? 0;
+        $currentCount = $usage?->getAssetCount() ?? 0;
 
         if ($collection->maxAssetCount !== null && ($currentCount + 1) > $collection->maxAssetCount) {
             throw new MediaQuotaExceededException(
