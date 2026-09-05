@@ -29,16 +29,16 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
         $resourceModel instanceof MediaCollectionResource
             || throw new \InvalidArgumentException('Unexpected resource model.');
 
-        $allowed = json_decode($resourceModel->allowed_mime_types_json, true);
-        $profile = json_decode($resourceModel->transform_profile_json, true);
+        $allowed = self::decodeList($resourceModel->allowed_mime_types_json, 'allowed_mime_types_json', $resourceModel->collection_key);
+        $profile = self::decodeList($resourceModel->transform_profile_json, 'transform_profile_json', $resourceModel->collection_key);
 
         return new MediaCollection(
             collectionKey: $resourceModel->collection_key,
             mediaKind: MediaKind::from($resourceModel->media_kind),
             visibilityDefault: MediaVisibility::from($resourceModel->visibility_default),
             quotaBucket: $resourceModel->quota_bucket,
-            allowedMimeTypes: is_array($allowed) ? array_values(array_filter($allowed, 'is_string')) : [],
-            transformPresets: $this->presets(is_array($profile) ? $profile : []),
+            allowedMimeTypes: array_values(array_filter($allowed, 'is_string')),
+            transformPresets: $this->presets($profile),
             maxOriginalBytes: $resourceModel->max_original_bytes,
             maxWidth: $resourceModel->max_width,
             maxHeight: $resourceModel->max_height,
@@ -46,6 +46,9 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
             tenantId: $resourceModel->tenant_id,
             id: $resourceModel->id,
             enabled: $resourceModel->enabled === 1,
+            metadata: self::stringKeyed(self::decodeList($resourceModel->metadata_json ?? '', 'metadata_json', $resourceModel->collection_key)),
+            createdAt: $resourceModel->created_at,
+            updatedAt: $resourceModel->updated_at,
         );
     }
 
@@ -72,6 +75,11 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
             max_height: $domainModel->getMaxHeight(),
             max_asset_count: $domainModel->getMaxAssetCount(),
             transform_profile_json: (string) json_encode($profile, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES),
+            metadata_json: $domainModel->getMetadata() === []
+                ? null
+                : (string) json_encode($domainModel->getMetadata(), JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES),
+            created_at: $domainModel->getCreatedAt(),
+            updated_at: $domainModel->getUpdatedAt(),
         );
     }
 
@@ -96,5 +104,56 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
         }
 
         return $presets;
+    }
+
+    /**
+     * A row's JSON column, or a refusal.
+     *
+     * Answering [] for malformed JSON is not the safe option it looks like: an
+     * empty allowlist reads as "every mime type allowed", an empty profile as
+     * "no variants", and the next save writes that invention back over the
+     * policy. The row is the thing that is wrong — say so.
+     *
+     * @return array<mixed>
+     */
+    private static function decodeList(string $json, string $column, string $collectionKey): array
+    {
+        if ($json === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new \InvalidArgumentException(
+                sprintf('Media collection %s carries malformed %s.', $collectionKey, $column),
+                0,
+                $e,
+            );
+        }
+
+        if (!is_array($decoded)) {
+            throw new \InvalidArgumentException(
+                sprintf('Media collection %s carries a non-object %s.', $collectionKey, $column),
+            );
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * @param array<mixed> $decoded
+     * @return array<string, mixed>
+     */
+    private static function stringKeyed(array $decoded): array
+    {
+        $map = [];
+        foreach ($decoded as $key => $value) {
+            if (is_string($key)) {
+                $map[$key] = $value;
+            }
+        }
+
+        return $map;
     }
 }

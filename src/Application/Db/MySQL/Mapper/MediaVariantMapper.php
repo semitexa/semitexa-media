@@ -23,9 +23,7 @@ final class MediaVariantMapper implements ResourceModelMapperInterface
         $resourceModel instanceof MediaVariantResource
             || throw new \InvalidArgumentException('Unexpected resource model.');
 
-        $decoded = $resourceModel->metadata_json === null ? null : json_decode($resourceModel->metadata_json, true);
-        /** @var array<string, mixed> $metadata */
-        $metadata = is_array($decoded) ? $decoded : [];
+        $metadata = self::decodeMetadata($resourceModel->metadata_json, $resourceModel->id);
 
         return new MediaVariant(
             id: $resourceModel->id,
@@ -95,5 +93,41 @@ final class MediaVariantMapper implements ResourceModelMapperInterface
             created_at: $domainModel->getCreatedAt(),
             updated_at: $domainModel->getUpdatedAt(),
         );
+    }
+
+    /**
+     * A row's JSON column, or a refusal.
+     *
+     * Answering [] for malformed JSON looks harmless on a read and is not: the
+     * same object goes back through toSourceModel() on the next save, and the
+     * column is overwritten with the empty value the read invented. The row is
+     * the thing that is wrong — say so.
+     *
+     * @return array<string, mixed>
+     */
+    private static function decodeMetadata(?string $json, string $id): array
+    {
+        if ($json === null || $json === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new \InvalidArgumentException(
+                sprintf('Media variant %s carries malformed metadata_json.', $id),
+                0,
+                $e,
+            );
+        }
+
+        if (!is_array($decoded)) {
+            throw new \InvalidArgumentException(
+                sprintf('Media variant %s carries a non-object metadata_json.', $id),
+            );
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
     }
 }

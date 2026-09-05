@@ -13,6 +13,7 @@ final readonly class MediaCollection
     /**
      * @param string[] $allowedMimeTypes
      * @param ImageTransformPreset[] $transformPresets
+     * @param array<string, mixed> $metadata
      */
     public function __construct(
         private string $collectionKey,
@@ -29,7 +30,32 @@ final readonly class MediaCollection
         /** Null for a collection declared in code rather than stored in a row. */
         private ?string $id = null,
         private bool $enabled = true,
+        /**
+         * The row's own free-form bag, and its audit stamps. Nothing in this
+         * package reads them — they are carried so a save round-trips. The
+         * write engine writes every column of the resource it is handed, so a
+         * field the mapper cannot rebuild is a field an update erases.
+         */
+        private array $metadata = [],
+        private ?\DateTimeImmutable $createdAt = null,
+        private ?\DateTimeImmutable $updatedAt = null,
     ) {}
+
+    /** @return array<string, mixed> */
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
 
     public function getCollectionKey(): string
     {

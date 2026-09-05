@@ -160,6 +160,57 @@ final class MediaVariantLeaseTest extends TestCase
         return [];
     }
 
+    /**
+     * A worker that already holds one variant must be handed the NEW one.
+     *
+     * The claim used to re-read its own work by (lease_owner, status), which
+     * names a set, not a row: with v-held already processing under this owner,
+     * that read returned v-held and the worker regenerated it while the variant
+     * it had actually just claimed sat leased and untouched.
+     */
+    #[Test]
+    public function a_worker_holding_one_variant_is_handed_the_one_it_just_claimed(): void
+    {
+        $this->seed(
+            'v-held',
+            queuedAt: '2026-09-05 09:00:00',
+            status: 'processing',
+            leaseOwner: 'worker-a',
+            leaseExpiresAt: date('Y-m-d H:i:s', time() + 600),
+            attemptCount: 1,
+        );
+        $this->seed('v-new', queuedAt: '2026-09-05 10:00:00');
+
+        $claimed = $this->repository->claimNext('worker-a');
+
+        self::assertSame('v-new', $this->idOf($claimed), 'the claim must return the row it won');
+        self::assertSame('processing', $this->row('v-held')['status'], 'the held variant is untouched');
+        self::assertEquals(1, $this->row('v-held')['attempt_count'], 'the held variant keeps its attempt count');
+    }
+
+    /**
+     * The candidate a worker picked can be taken between the pick and the
+     * claim. The UPDATE re-checks eligibility, so the loser writes nothing —
+     * and moves on to the next candidate rather than reporting an empty queue.
+     */
+    #[Test]
+    public function a_worker_that_loses_a_race_takes_the_next_candidate(): void
+    {
+        $this->seed('v-1', queuedAt: '2026-09-05 10:00:00');
+        $this->seed('v-2', queuedAt: '2026-09-05 10:00:01');
+
+        $first = $this->repository->claimNext('worker-a');
+
+        $second = new MediaVariantRepository();
+        (new \ReflectionProperty(MediaVariantRepository::class, 'orm'))->setValue($second, $this->orm);
+        $secondClaim = $second->claimNext('worker-b');
+
+        self::assertSame('v-1', $this->idOf($first));
+        self::assertSame('v-2', $this->idOf($secondClaim), 'the second worker takes the next queued variant');
+        self::assertSame('worker-a', $this->row('v-1')['lease_owner']);
+        self::assertSame('worker-b', $this->row('v-2')['lease_owner']);
+    }
+
     private function seed(
         string $id,
         string $queuedAt,

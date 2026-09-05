@@ -41,8 +41,18 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
 
     public function save(MediaQuotaUsage $entity): MediaQuotaUsage
     {
+        if ($entity->getId() === '') {
+            /** @var MediaQuotaUsage */
+            return $this->system()->insert($entity);
+        }
+
+        // The recalculator mints an id for a bucket it did NOT find, so a
+        // non-empty id is not evidence of a row. Routing on the id alone made
+        // the first recalculation a silent 0-row UPDATE: nothing landed, the
+        // next read still found nothing, and the bucket never came into being.
+        // Same reasoning as MediaAssetRepository::save().
         /** @var MediaQuotaUsage */
-        return $entity->getId() === ''
+        return $this->findByBucket($entity->getTenantId(), $entity->getQuotaBucket()) === null
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }
