@@ -6,7 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
@@ -166,12 +166,12 @@ final class MediaWorker
      * Shared transform tail for both the queue path (processMessage) and the
      * DB-claim path (drain): the variant must already be marked processing.
      */
-    private function transformVariant(MediaAssetResource $asset, MediaVariantResource $variant): bool
+    private function transformVariant(MediaAsset $asset, MediaVariantResource $variant): bool
     {
         try {
             $collection = $this->collectionResolver->resolve(
-                $asset->collection_key,
-                $asset->tenant_id,
+                $asset->getCollectionKey(),
+                $asset->getTenantId(),
             );
         } catch (\Throwable $e) {
             $this->failVariant($variant, 'collection_not_found', $e->getMessage());
@@ -181,9 +181,9 @@ final class MediaWorker
 
         try {
             $result = $this->transformationService->generateVariant(
-                originalPath: $asset->original_path,
+                originalPath: $asset->getOriginalPath(),
                 assetId:      $variant->media_asset_id,
-                tenantId:     $asset->tenant_id ?? '',
+                tenantId:     $asset->getTenantId() ?? '',
                 variant:      $variant,
                 collection:   $collection,
             );

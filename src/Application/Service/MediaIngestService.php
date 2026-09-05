@@ -7,7 +7,7 @@ namespace Semitexa\Media\Application\Service;
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Log\LoggerInterface;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaQuotaManagerInterface;
@@ -90,7 +90,7 @@ final class MediaIngestService
             createdBy:       $createdBy,
         );
         // Pin the pre-generated ID (readonly resource — rebuild the row).
-        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
+        $resource = $this->assetRepository->save($resource->with(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -165,7 +165,7 @@ final class MediaIngestService
             tenantId:        $tenantId,
             createdBy:       $createdBy,
         );
-        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
+        $resource = $this->assetRepository->save($resource->with(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -229,11 +229,11 @@ final class MediaIngestService
         }
     }
 
-    private function markReady(MediaAssetResource $resource): void
+    private function markReady(MediaAsset $resource): void
     {
-        $this->assetRepository->save($resource->copyWith([
+        $this->assetRepository->save($resource->with([
             'status' => MediaAssetStatus::Ready->value,
-            'ready_at' => new \DateTimeImmutable(),
+            'readyAt' => new \DateTimeImmutable(),
         ]));
     }
 

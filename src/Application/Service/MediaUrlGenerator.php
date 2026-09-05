@@ -41,7 +41,7 @@ final class MediaUrlGenerator implements MediaUrlGeneratorInterface
             return '';
         }
 
-        return $this->addVersioning($this->storage->url($asset->original_path), $asset->ready_at ?? $asset->created_at ?? null);
+        return $this->addVersioning($this->storage->url($asset->getOriginalPath()), $asset->getReadyAt() ?? $asset->getCreatedAt() ?? null);
     }
 
     private function addVersioning(string $url, ?\DateTimeImmutable $timestamp): string

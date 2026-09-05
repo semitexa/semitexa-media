@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Enum\MediaAssetStatus;
 use Semitexa\Media\Domain\Model\ImageMetadata;
@@ -22,25 +22,42 @@ final class MediaAssetFactory
         MediaCollection $collection,
         string $tenantId,
         ?string $createdBy,
-    ): MediaAssetResource {
-        return new MediaAssetResource(
-            tenant_id: $tenantId,
-            collection_key: $collection->getCollectionKey(),
-            storage_driver: $storageDriver,
-            original_path: $storagePath,
-            original_filename: $originalFilename,
-            mime_type: $metadata->mimeType,
-            media_kind: $collection->getMediaKind()->value,
+    ): MediaAsset {
+        return new MediaAsset(
+            id: '',
+            tenantId: $tenantId,
+            collectionKey: $collection->getCollectionKey(),
+            storageDriver: $storageDriver,
+            originalPath: $storagePath,
+            originalFilename: $originalFilename,
+            mimeType: $metadata->mimeType,
+            mediaKind: $collection->getMediaKind()->value,
             visibility: $collection->getVisibilityDefault()->value,
             status: MediaAssetStatus::Pending->value,
-            byte_size: $metadata->byteSize,
+            byteSize: $metadata->byteSize,
             width: $metadata->width,
             height: $metadata->height,
             orientation: $metadata->orientation,
             sha256: $metadata->sha256,
-            created_by: $createdBy,
-            metadata_json: $metadata->extra !== []
-                ? json_encode($metadata->extra, JSON_THROW_ON_ERROR) : null,
+            createdBy: $createdBy,
+            metadata: $this->stringKeyed($metadata->extra),
         );
+    }
+
+    /**
+     * @param array<mixed> $extra
+     *
+     * @return array<string, mixed>
+     */
+    private function stringKeyed(array $extra): array
+    {
+        $out = [];
+        foreach ($extra as $key => $value) {
+            if (is_string($key)) {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out;
     }
 }
