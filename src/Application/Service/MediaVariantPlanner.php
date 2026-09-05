@@ -31,7 +31,7 @@ final class MediaVariantPlanner
     ): array {
         $planned = [];
 
-        foreach ($collection->transformPresets as $preset) {
+        foreach ($collection->getTransformPresets() as $preset) {
             $existing = $this->variantRepository->findByAssetAndKey($assetId, $preset->variantKey);
 
             if ($existing !== null) {

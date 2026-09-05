@@ -200,31 +200,31 @@ final class MediaIngestService
     {
         if (!$collection->isMimeTypeAllowed($mimeType)) {
             throw new MediaIngestException(
-                "MIME type '{$mimeType}' is not allowed in collection '{$collection->collectionKey}'."
+                "MIME type '{$mimeType}' is not allowed in collection '{$collection->getCollectionKey()}'."
             );
         }
     }
 
     private function validateByteSize(int $byteSize, MediaCollection $collection): void
     {
-        if ($collection->maxOriginalBytes !== null && $byteSize > $collection->maxOriginalBytes) {
+        if ($collection->getMaxOriginalBytes() !== null && $byteSize > $collection->getMaxOriginalBytes()) {
             throw new MediaIngestException(
-                "File size {$byteSize} bytes exceeds the maximum of {$collection->maxOriginalBytes} bytes for collection '{$collection->collectionKey}'."
+                "File size {$byteSize} bytes exceeds the maximum of {$collection->getMaxOriginalBytes()} bytes for collection '{$collection->getCollectionKey()}'."
             );
         }
     }
 
     private function validateDimensions(int $width, int $height, MediaCollection $collection): void
     {
-        if ($collection->maxWidth !== null && $width > $collection->maxWidth) {
+        if ($collection->getMaxWidth() !== null && $width > $collection->getMaxWidth()) {
             throw new MediaIngestException(
-                "Image width {$width}px exceeds the maximum of {$collection->maxWidth}px for collection '{$collection->collectionKey}'."
+                "Image width {$width}px exceeds the maximum of {$collection->getMaxWidth()}px for collection '{$collection->getCollectionKey()}'."
             );
         }
 
-        if ($collection->maxHeight !== null && $height > $collection->maxHeight) {
+        if ($collection->getMaxHeight() !== null && $height > $collection->getMaxHeight()) {
             throw new MediaIngestException(
-                "Image height {$height}px exceeds the maximum of {$collection->maxHeight}px for collection '{$collection->collectionKey}'."
+                "Image height {$height}px exceeds the maximum of {$collection->getMaxHeight()}px for collection '{$collection->getCollectionKey()}'."
             );
         }
     }

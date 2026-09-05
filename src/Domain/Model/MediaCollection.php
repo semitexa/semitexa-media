@@ -15,18 +15,94 @@ final readonly class MediaCollection
      * @param ImageTransformPreset[] $transformPresets
      */
     public function __construct(
-        public string $collectionKey,
-        public MediaKind $mediaKind,
-        public MediaVisibility $visibilityDefault,
-        public string $quotaBucket,
-        public array $allowedMimeTypes,
-        public array $transformPresets,
-        public ?int $maxOriginalBytes = null,
-        public ?int $maxWidth = null,
-        public ?int $maxHeight = null,
-        public ?int $maxAssetCount = null,
-        public ?string $tenantId = null,
+        private string $collectionKey,
+        private MediaKind $mediaKind,
+        private MediaVisibility $visibilityDefault,
+        private string $quotaBucket,
+        private array $allowedMimeTypes,
+        private array $transformPresets,
+        private ?int $maxOriginalBytes = null,
+        private ?int $maxWidth = null,
+        private ?int $maxHeight = null,
+        private ?int $maxAssetCount = null,
+        private ?string $tenantId = null,
+        /** Null for a collection declared in code rather than stored in a row. */
+        private ?string $id = null,
+        private bool $enabled = true,
     ) {}
+
+    public function getCollectionKey(): string
+    {
+        return $this->collectionKey;
+    }
+
+    public function getMediaKind(): MediaKind
+    {
+        return $this->mediaKind;
+    }
+
+    public function getVisibilityDefault(): MediaVisibility
+    {
+        return $this->visibilityDefault;
+    }
+
+    public function getQuotaBucket(): string
+    {
+        return $this->quotaBucket;
+    }
+
+    /** @return string[] */
+    public function getAllowedMimeTypes(): array
+    {
+        return $this->allowedMimeTypes;
+    }
+
+    /** @return ImageTransformPreset[] */
+    public function getTransformPresets(): array
+    {
+        return $this->transformPresets;
+    }
+
+    public function getMaxOriginalBytes(): ?int
+    {
+        return $this->maxOriginalBytes;
+    }
+
+    public function getMaxWidth(): ?int
+    {
+        return $this->maxWidth;
+    }
+
+    public function getMaxHeight(): ?int
+    {
+        return $this->maxHeight;
+    }
+
+    public function getMaxAssetCount(): ?int
+    {
+        return $this->maxAssetCount;
+    }
+
+    public function getTenantId(): ?string
+    {
+        return $this->tenantId;
+    }
+
+    public function getId(): ?string
+    {
+        return $this->id;
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+
+    /** True when this collection was declared in code rather than loaded from a row. */
+    public function isCodeDefined(): bool
+    {
+        return $this->id === null;
+    }
 
     public function isMimeTypeAllowed(string $mimeType): bool
     {

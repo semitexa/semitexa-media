@@ -37,7 +37,7 @@ final class MediaTransformationService
         if ($preset === null) {
             return VariantGenerationResult::failure(
                 'preset_not_found',
-                "Transform preset '{$variant->variant_key}' not found in collection '{$collection->collectionKey}'.",
+                "Transform preset '{$variant->variant_key}' not found in collection '{$collection->getCollectionKey()}'.",
             );
         }
 
@@ -57,7 +57,7 @@ final class MediaTransformationService
 
         $storagePath = $this->pathBuilder->build(
             $tenantId,
-            $collection->collectionKey,
+            $collection->getCollectionKey(),
             $assetId,
             $variant->variant_key,
             $preset->format,

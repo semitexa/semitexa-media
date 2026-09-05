@@ -288,7 +288,7 @@ final class MediaImportCommand extends BaseCommand
     {
         // An open collection (no explicit MIME allowlist) still only takes
         // what the imagick pipeline can inspect — images.
-        if ($collection->allowedMimeTypes === []) {
+        if ($collection->getAllowedMimeTypes() === []) {
             return str_starts_with($mimeType, 'image/');
         }
 

@@ -9,9 +9,6 @@ use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Media\Domain\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Media\Domain\Exception\MediaCollectionNotFoundException;
 use Semitexa\Media\Domain\Model\MediaCollection;
-use Semitexa\Media\Domain\Enum\MediaKind;
-use Semitexa\Media\Domain\Enum\MediaVisibility;
-use Semitexa\Media\Domain\Model\ImageTransformPreset;
 
 /**
  * Resolves the active MediaCollection for a given collection key and optional tenant.
@@ -38,35 +35,9 @@ final class MediaCollectionPolicyResolver
             return $collection;
         }
 
-        // Fall back to DB-persisted
-        $resource = $this->collectionRepository->findActive($collectionKey, $tenantId);
-        if ($resource === null) {
-            throw new MediaCollectionNotFoundException($collectionKey, $tenantId);
-        }
-
-        $allowedMimeTypes = json_decode($resource->allowed_mime_types_json, true) ?? [];
-        $transformProfile = json_decode($resource->transform_profile_json, true) ?? [];
-
-        $presets = [];
-        foreach ($transformProfile as $variantKey => $presetData) {
-            $presets[] = ImageTransformPreset::fromArray(
-                is_string($variantKey) ? $variantKey : ($presetData['variantKey'] ?? ''),
-                is_string($variantKey) ? $presetData : $presetData,
-            );
-        }
-
-        return new MediaCollection(
-            collectionKey:    $resource->collection_key,
-            mediaKind:        MediaKind::from($resource->media_kind),
-            visibilityDefault: MediaVisibility::from($resource->visibility_default),
-            quotaBucket:      $resource->quota_bucket,
-            allowedMimeTypes: $allowedMimeTypes,
-            transformPresets: $presets,
-            maxOriginalBytes: $resource->max_original_bytes,
-            maxWidth:         $resource->max_width,
-            maxHeight:        $resource->max_height,
-            maxAssetCount:    $resource->max_asset_count,
-            tenantId:         $resource->tenant_id,
-        );
+        // Fall back to DB-persisted. Decoding the row is the mapper's job now,
+        // so this reads as what it is: code wins, else the table, else nothing.
+        return $this->collectionRepository->findActive($collectionKey, $tenantId)
+            ?? throw new MediaCollectionNotFoundException($collectionKey, $tenantId);
     }
 }

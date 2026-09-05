@@ -25,13 +25,13 @@ final class MediaAssetFactory
     ): MediaAssetResource {
         return new MediaAssetResource(
             tenant_id: $tenantId,
-            collection_key: $collection->collectionKey,
+            collection_key: $collection->getCollectionKey(),
             storage_driver: $storageDriver,
             original_path: $storagePath,
             original_filename: $originalFilename,
             mime_type: $metadata->mimeType,
-            media_kind: $collection->mediaKind->value,
-            visibility: $collection->visibilityDefault->value,
+            media_kind: $collection->getMediaKind()->value,
+            visibility: $collection->getVisibilityDefault()->value,
             status: MediaAssetStatus::Pending->value,
             byte_size: $metadata->byteSize,
             width: $metadata->width,
