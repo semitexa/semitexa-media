@@ -59,7 +59,7 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
         $now = date('Y-m-d H:i:s');
         $leaseExpires = date('Y-m-d H:i:s', time() + $leaseDurationSeconds);
 
-        $this->adapter()->execute(
+        $claimed = $this->adapter()->execute(
             "UPDATE media_variants
              SET status = 'processing',
                  lease_owner = :lease_owner,
@@ -87,6 +87,20 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
             ],
         );
 
+        // Nothing matched: the queue holds nothing claimable. Say so.
+        //
+        // Without this, the re-read below found whatever this worker already
+        // had in flight and returned it as a fresh claim — never re-queued, its
+        // attempt count never moved — so a busy worker quietly did the same
+        // work twice. Asking the UPDATE what it touched is the only exact
+        // answer; the lease timestamp has second resolution, so two claims in
+        // one second are indistinguishable by expiry alone.
+        if ($claimed->rowCount === 0) {
+            return null;
+        }
+
+        // A worker takes one variant at a time, so owner + processing names the
+        // row just claimed.
         /** @var MediaVariantResource|null */
         return $this->system()->query()
             ->where(MediaVariantResource::column('lease_owner'), Operator::Equals, $leaseOwner)
