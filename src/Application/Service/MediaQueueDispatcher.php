@@ -8,7 +8,7 @@ use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Queue\QueueConfig;
 use Semitexa\Core\Queue\QueueTransportRegistry;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
+use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
 use Semitexa\Orm\Application\Service\Uuid7;
@@ -20,12 +20,12 @@ final class MediaQueueDispatcher
     #[InjectAsReadonly]
     protected MediaConfig $config;
 
-    public function dispatch(string $assetId, MediaVariantResource $variant): void
+    public function dispatch(string $assetId, MediaVariant $variant): void
     {
         $message = new QueuedMediaTransformMessage(
             assetId:    $assetId,
-            variantKey: $variant->variant_key,
-            tenantId:   $variant->tenant_id ?? '',
+            variantKey: $variant->getVariantKey(),
+            tenantId:   $variant->getTenantId() ?? '',
         );
 
         $payload = TenantAwareJobSerializer::wrap($message->jsonSerialize());

@@ -29,8 +29,8 @@ final class MediaUrlGenerator implements MediaUrlGeneratorInterface
         if ($variantKey !== null) {
             $variant = $this->variantRepository->findByAssetAndKey($assetId, $variantKey);
 
-            if ($variant !== null && $variant->status === MediaVariantStatus::Ready->value && $variant->storage_path !== null) {
-                return $this->addVersioning($this->storage->url($variant->storage_path), $variant->generated_at);
+            if ($variant !== null && $variant->getStatus() === MediaVariantStatus::Ready->value && $variant->getStoragePath() !== null) {
+                return $this->addVersioning($this->storage->url($variant->getStoragePath()), $variant->getGeneratedAt());
             }
         }
 
@@ -41,7 +41,7 @@ final class MediaUrlGenerator implements MediaUrlGeneratorInterface
             return '';
         }
 
-        return $this->addVersioning($this->storage->url($asset->original_path), $asset->ready_at ?? $asset->created_at ?? null);
+        return $this->addVersioning($this->storage->url($asset->getOriginalPath()), $asset->getReadyAt() ?? $asset->getCreatedAt() ?? null);
     }
 
     private function addVersioning(string $url, ?\DateTimeImmutable $timestamp): string

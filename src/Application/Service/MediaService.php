@@ -86,11 +86,11 @@ final class MediaService implements MediaServiceInterface
 
         foreach ($variants as $variant) {
             // Reset to queued (readonly resource — dispatch the saved row).
-            $variant = $this->variantRepository->save($variant->copyWith([
+            $variant = $this->variantRepository->save($variant->with([
                 'status' => MediaVariantStatus::Queued->value,
-                'queued_at' => new \DateTimeImmutable(),
-                'error_code' => null,
-                'error_message' => null,
+                'queuedAt' => new \DateTimeImmutable(),
+                'errorCode' => null,
+                'errorMessage' => null,
             ]));
             $this->queueDispatcher->dispatch($assetId, $variant);
         }

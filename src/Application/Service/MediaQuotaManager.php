@@ -22,17 +22,17 @@ final class MediaQuotaManager implements MediaQuotaManagerInterface
 
     public function checkAndReserve(string $tenantId, MediaCollection $collection, int $byteSize): void
     {
-        $bucket = $collection->quotaBucket;
+        $bucket = $collection->getQuotaBucket();
         $usage  = $this->quotaRepository->findByBucket($tenantId, $bucket);
 
-        $currentBytes = $usage?->original_bytes ?? 0;
-        $currentCount = $usage?->asset_count ?? 0;
+        $currentBytes = $usage?->getOriginalBytes() ?? 0;
+        $currentCount = $usage?->getAssetCount() ?? 0;
 
-        if ($collection->maxAssetCount !== null && ($currentCount + 1) > $collection->maxAssetCount) {
+        if ($collection->getMaxAssetCount() !== null && ($currentCount + 1) > $collection->getMaxAssetCount()) {
             throw new MediaQuotaExceededException(
                 $tenantId,
                 $bucket,
-                "Asset count limit of {$collection->maxAssetCount} would be exceeded.",
+                "Asset count limit of {$collection->getMaxAssetCount()} would be exceeded.",
             );
         }
 

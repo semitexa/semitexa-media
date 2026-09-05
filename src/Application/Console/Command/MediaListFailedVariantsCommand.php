@@ -58,12 +58,12 @@ final class MediaListFailedVariantsCommand extends Command
             $rows = [];
             foreach ($variants as $variant) {
                 $rows[] = [
-                    $variant->media_asset_id,
-                    $variant->variant_key,
-                    $variant->attempt_count . '/' . $variant->max_attempts,
-                    $variant->error_code ?? '-',
-                    $variant->last_attempt_at?->format('Y-m-d H:i:s') ?? '-',
-                    substr($variant->error_message ?? '', 0, 80),
+                    $variant->getMediaAssetId(),
+                    $variant->getVariantKey(),
+                    $variant->getAttemptCount() . '/' . $variant->getMaxAttempts(),
+                    $variant->getErrorCode() ?? '-',
+                    $variant->getLastAttemptAt()?->format('Y-m-d H:i:s') ?? '-',
+                    substr($variant->getErrorMessage() ?? '', 0, 80),
                 ];
             }
 

@@ -6,7 +6,8 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageResource;
+use Semitexa\Media\Domain\Model\MediaQuotaUsage;
+use Semitexa\Orm\Application\Service\Uuid7;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaQuotaUsageRepositoryInterface;
 
@@ -29,12 +30,12 @@ final class MediaQuotaRecalculator
         $totalCount = $this->assetRepository->countByBucket($tenantId, $quotaBucket);
 
         $resource = $this->quotaRepository->findByBucket($tenantId, $quotaBucket)
-            ?? new MediaQuotaUsageResource(tenant_id: $tenantId, quota_bucket: $quotaBucket);
+            ?? new MediaQuotaUsage(id: Uuid7::generate(), tenantId: $tenantId, quotaBucket: $quotaBucket);
 
-        $this->quotaRepository->save($resource->copyWith([
-            'original_bytes' => $totalBytes,
-            'asset_count' => $totalCount,
-            'last_recalculated_at' => new \DateTimeImmutable(),
+        $this->quotaRepository->save($resource->with([
+            'originalBytes' => $totalBytes,
+            'assetCount' => $totalCount,
+            'lastRecalculatedAt' => new \DateTimeImmutable(),
         ]));
     }
 }

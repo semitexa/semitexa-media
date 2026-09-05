@@ -7,6 +7,7 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaCollectionResource;
+use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Contract\MediaCollectionRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -29,43 +30,43 @@ class MediaCollectionRepository extends AbstractMediaRepository implements Media
 
     private ?DomainRepository $system = null;
 
-    public function findActive(string $collectionKey, ?string $tenantId = null): ?MediaCollectionResource
+    public function findActive(string $collectionKey, ?string $tenantId = null): ?MediaCollection
     {
         if ($tenantId !== null) {
-            /** @var MediaCollectionResource|null $row */
+            /** @var MediaCollection|null $row */
             $row = $this->system()->query()
                 ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
                 ->where(MediaCollectionResource::column('tenant_id'), Operator::Equals, $tenantId)
                 ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
-                ->fetchOneAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
+                ->fetchOneAs(MediaCollection::class, $this->orm()->getMapperRegistry());
 
             if ($row !== null) {
                 return $row;
             }
         }
 
-        /** @var MediaCollectionResource|null */
+        /** @var MediaCollection|null */
         return $this->system()->query()
             ->where(MediaCollectionResource::column('collection_key'), Operator::Equals, $collectionKey)
             ->whereNull(MediaCollectionResource::column('tenant_id'))
             ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
-            ->fetchOneAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
+            ->fetchOneAs(MediaCollection::class, $this->orm()->getMapperRegistry());
     }
 
-    public function save(MediaCollectionResource $entity): MediaCollectionResource
+    public function save(MediaCollection $entity): MediaCollection
     {
-        /** @var MediaCollectionResource */
-        return $entity->id === ''
+        /** @var MediaCollection */
+        return ($entity->getId() ?? '') === ''
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }
 
     public function findAllEnabled(): array
     {
-        /** @var list<MediaCollectionResource> */
+        /** @var list<MediaCollection> */
         return $this->system()->query()
             ->where(MediaCollectionResource::column('enabled'), Operator::Equals, 1)
-            ->fetchAllAs(MediaCollectionResource::class, $this->orm()->getMapperRegistry());
+            ->fetchAllAs(MediaCollection::class, $this->orm()->getMapperRegistry());
     }
 
     /**
@@ -84,7 +85,7 @@ class MediaCollectionRepository extends AbstractMediaRepository implements Media
     {
         return $this->repository ??= $this->orm()->repository(
             MediaCollectionResource::class,
-            MediaCollectionResource::class,
+            MediaCollection::class,
         );
     }
 

@@ -6,8 +6,8 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
+use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
@@ -81,10 +81,10 @@ final class MediaWorker
                 break;
             }
 
-            $asset = $this->assetRepository->findById($variant->media_asset_id);
+            $asset = $this->assetRepository->findById($variant->getMediaAssetId());
             if ($asset === null) {
-                $this->failVariant($variant, 'asset_not_found', "Asset '{$variant->media_asset_id}' not found.");
-                $this->log("Asset '{$variant->media_asset_id}' not found — variant '{$variant->variant_key}' failed.", 'warning');
+                $this->failVariant($variant, 'asset_not_found', "Asset '{$variant->getMediaAssetId()}' not found.");
+                $this->log("Asset '{$variant->getMediaAssetId()}' not found — variant '{$variant->getVariantKey()}' failed.", 'warning');
                 $failed++;
                 continue;
             }
@@ -138,25 +138,25 @@ final class MediaWorker
             return;
         }
 
-        if ($variant->status === MediaVariantStatus::Ready->value) {
+        if ($variant->getStatus() === MediaVariantStatus::Ready->value) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' already ready — skipping.", 'info');
             return;
         }
 
-        if ($variant->attempt_count >= $variant->max_attempts) {
+        if ($variant->getAttemptCount() >= $variant->getMaxAttempts()) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' exceeded max attempts — skipping.", 'warning');
             return;
         }
 
         // Mark as processing (resources are readonly — continue with the row
         // returned by save()).
-        $variant = $this->variantRepository->save($variant->copyWith([
+        $variant = $this->variantRepository->save($variant->with([
             'status' => MediaVariantStatus::Processing->value,
-            'lease_owner' => $this->workerId,
-            'lease_expires_at' => new \DateTimeImmutable('+5 minutes'),
-            'last_attempt_at' => new \DateTimeImmutable(),
-            'attempt_count' => $variant->attempt_count + 1,
-            'processing_started_at' => $variant->processing_started_at ?? new \DateTimeImmutable(),
+            'leaseOwner' => $this->workerId,
+            'leaseExpiresAt' => new \DateTimeImmutable('+5 minutes'),
+            'lastAttemptAt' => new \DateTimeImmutable(),
+            'attemptCount' => $variant->getAttemptCount() + 1,
+            'processingStartedAt' => $variant->getProcessingStartedAt() ?? new \DateTimeImmutable(),
         ]));
 
         $this->transformVariant($asset, $variant);
@@ -166,69 +166,69 @@ final class MediaWorker
      * Shared transform tail for both the queue path (processMessage) and the
      * DB-claim path (drain): the variant must already be marked processing.
      */
-    private function transformVariant(MediaAssetResource $asset, MediaVariantResource $variant): bool
+    private function transformVariant(MediaAsset $asset, MediaVariant $variant): bool
     {
         try {
             $collection = $this->collectionResolver->resolve(
-                $asset->collection_key,
-                $asset->tenant_id,
+                $asset->getCollectionKey(),
+                $asset->getTenantId(),
             );
         } catch (\Throwable $e) {
             $this->failVariant($variant, 'collection_not_found', $e->getMessage());
-            $this->log("Collection not found for asset '{$variant->media_asset_id}': {$e->getMessage()}", 'error');
+            $this->log("Collection not found for asset '{$variant->getMediaAssetId()}': {$e->getMessage()}", 'error');
             return false;
         }
 
         try {
             $result = $this->transformationService->generateVariant(
-                originalPath: $asset->original_path,
-                assetId:      $variant->media_asset_id,
-                tenantId:     $asset->tenant_id ?? '',
+                originalPath: $asset->getOriginalPath(),
+                assetId:      $variant->getMediaAssetId(),
+                tenantId:     $asset->getTenantId() ?? '',
                 variant:      $variant,
                 collection:   $collection,
             );
         } catch (\Throwable $e) {
             $this->failVariant($variant, 'processing_error', $e->getMessage());
-            $this->log("Transform failed for '{$variant->media_asset_id}/{$variant->variant_key}': {$e->getMessage()}", 'error');
+            $this->log("Transform failed for '{$variant->getMediaAssetId()}/{$variant->getVariantKey()}': {$e->getMessage()}", 'error');
             return false;
         }
 
         if ($result->success) {
             $this->markVariantReady($variant, $result);
-            $this->log("Variant '{$variant->variant_key}' for asset '{$variant->media_asset_id}' generated successfully.", 'success');
+            $this->log("Variant '{$variant->getVariantKey()}' for asset '{$variant->getMediaAssetId()}' generated successfully.", 'success');
             return true;
         }
 
         $this->failVariant($variant, $result->errorCode ?? 'unknown', $result->errorMessage ?? '');
-        $this->log("Variant '{$variant->variant_key}' failed: {$result->errorMessage}", 'error');
+        $this->log("Variant '{$variant->getVariantKey()}' failed: {$result->errorMessage}", 'error');
         return false;
     }
 
-    private function markVariantReady(MediaVariantResource $variant, \Semitexa\Media\Domain\Model\VariantGenerationResult $result): void
+    private function markVariantReady(MediaVariant $variant, \Semitexa\Media\Domain\Model\VariantGenerationResult $result): void
     {
-        $this->variantRepository->save($variant->copyWith([
+        $this->variantRepository->save($variant->with([
             'status' => MediaVariantStatus::Ready->value,
-            'storage_path' => $result->storagePath,
-            'mime_type' => $result->mimeType,
-            'byte_size' => $result->byteSize,
-            'actual_width' => $result->actualWidth,
-            'actual_height' => $result->actualHeight,
-            'generated_at' => new \DateTimeImmutable(),
-            'lease_owner' => null,
-            'lease_expires_at' => null,
-            'error_code' => null,
-            'error_message' => null,
+            'storagePath' => $result->storagePath,
+            'mimeType' => $result->mimeType,
+            'byteSize' => $result->byteSize,
+            'actualWidth' => $result->actualWidth,
+            'actualHeight' => $result->actualHeight,
+            'generatedAt' => new \DateTimeImmutable(),
+            'leaseOwner' => null,
+            'leaseExpiresAt' => null,
+            'errorCode' => null,
+            'errorMessage' => null,
         ]));
     }
 
-    private function failVariant(MediaVariantResource $variant, string $errorCode, string $errorMessage): void
+    private function failVariant(MediaVariant $variant, string $errorCode, string $errorMessage): void
     {
-        $this->variantRepository->save($variant->copyWith([
+        $this->variantRepository->save($variant->with([
             'status' => MediaVariantStatus::Failed->value,
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-            'lease_owner' => null,
-            'lease_expires_at' => null,
+            'errorCode' => $errorCode,
+            'errorMessage' => $errorMessage,
+            'leaseOwner' => null,
+            'leaseExpiresAt' => null,
         ]));
     }
 

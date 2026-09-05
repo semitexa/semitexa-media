@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Domain\Contract;
 
-use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
+use Semitexa\Media\Domain\Model\MediaVariant;
 
 interface MediaVariantRepositoryInterface
 {
-    public function findByAssetAndKey(string $assetId, string $variantKey): ?MediaVariantResource;
+    public function findByAssetAndKey(string $assetId, string $variantKey): ?MediaVariant;
 
     /**
-     * @return MediaVariantResource[]
+     * @return MediaVariant[]
      */
     public function findByAssetId(string $assetId): array;
 
@@ -19,21 +19,21 @@ interface MediaVariantRepositoryInterface
      * Persist and RETURN the stored row — resources are readonly; the write
      * engine's generated id/state comes back on a fresh instance.
      */
-    public function save(MediaVariantResource $entity): MediaVariantResource;
+    public function save(MediaVariant $entity): MediaVariant;
 
     /**
      * Atomically claim the next queued variant for processing.
      * Returns null when no claimable row is available.
      */
-    public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariantResource;
+    public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant;
 
     /**
-     * @return MediaVariantResource[]
+     * @return MediaVariant[]
      */
     public function findFailed(int $limit = 100): array;
 
     /**
-     * @return MediaVariantResource[]
+     * @return MediaVariant[]
      */
     public function findFailedByAssetId(string $assetId): array;
 }

@@ -7,7 +7,7 @@ namespace Semitexa\Media\Application\Service;
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Log\LoggerInterface;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaQuotaManagerInterface;
@@ -90,7 +90,7 @@ final class MediaIngestService
             createdBy:       $createdBy,
         );
         // Pin the pre-generated ID (readonly resource — rebuild the row).
-        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
+        $resource = $this->assetRepository->save($resource->with(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -108,7 +108,7 @@ final class MediaIngestService
                 // Log dispatch failure but do not fail ingest — variants can be retried
                 $this->logger->error('Media queue dispatch failed', [
                     'asset_id' => $assetId,
-                    'variant_key' => $variant->variant_key,
+                    'variant_key' => $variant->getVariantKey(),
                     'exception' => $e::class,
                     'message' => $e->getMessage(),
                 ]);
@@ -165,7 +165,7 @@ final class MediaIngestService
             tenantId:        $tenantId,
             createdBy:       $createdBy,
         );
-        $resource = $this->assetRepository->save($resource->copyWith(['id' => $assetId]));
+        $resource = $this->assetRepository->save($resource->with(['id' => $assetId]));
 
         $this->markReady($resource);
 
@@ -182,7 +182,7 @@ final class MediaIngestService
             } catch (\Throwable $e) {
                 $this->logger->error('Media queue dispatch failed', [
                     'asset_id' => $assetId,
-                    'variant_key' => $variant->variant_key,
+                    'variant_key' => $variant->getVariantKey(),
                     'exception' => $e::class,
                     'message' => $e->getMessage(),
                 ]);
@@ -200,40 +200,40 @@ final class MediaIngestService
     {
         if (!$collection->isMimeTypeAllowed($mimeType)) {
             throw new MediaIngestException(
-                "MIME type '{$mimeType}' is not allowed in collection '{$collection->collectionKey}'."
+                "MIME type '{$mimeType}' is not allowed in collection '{$collection->getCollectionKey()}'."
             );
         }
     }
 
     private function validateByteSize(int $byteSize, MediaCollection $collection): void
     {
-        if ($collection->maxOriginalBytes !== null && $byteSize > $collection->maxOriginalBytes) {
+        if ($collection->getMaxOriginalBytes() !== null && $byteSize > $collection->getMaxOriginalBytes()) {
             throw new MediaIngestException(
-                "File size {$byteSize} bytes exceeds the maximum of {$collection->maxOriginalBytes} bytes for collection '{$collection->collectionKey}'."
+                "File size {$byteSize} bytes exceeds the maximum of {$collection->getMaxOriginalBytes()} bytes for collection '{$collection->getCollectionKey()}'."
             );
         }
     }
 
     private function validateDimensions(int $width, int $height, MediaCollection $collection): void
     {
-        if ($collection->maxWidth !== null && $width > $collection->maxWidth) {
+        if ($collection->getMaxWidth() !== null && $width > $collection->getMaxWidth()) {
             throw new MediaIngestException(
-                "Image width {$width}px exceeds the maximum of {$collection->maxWidth}px for collection '{$collection->collectionKey}'."
+                "Image width {$width}px exceeds the maximum of {$collection->getMaxWidth()}px for collection '{$collection->getCollectionKey()}'."
             );
         }
 
-        if ($collection->maxHeight !== null && $height > $collection->maxHeight) {
+        if ($collection->getMaxHeight() !== null && $height > $collection->getMaxHeight()) {
             throw new MediaIngestException(
-                "Image height {$height}px exceeds the maximum of {$collection->maxHeight}px for collection '{$collection->collectionKey}'."
+                "Image height {$height}px exceeds the maximum of {$collection->getMaxHeight()}px for collection '{$collection->getCollectionKey()}'."
             );
         }
     }
 
-    private function markReady(MediaAssetResource $resource): void
+    private function markReady(MediaAsset $resource): void
     {
-        $this->assetRepository->save($resource->copyWith([
+        $this->assetRepository->save($resource->with([
             'status' => MediaAssetStatus::Ready->value,
-            'ready_at' => new \DateTimeImmutable(),
+            'readyAt' => new \DateTimeImmutable(),
         ]));
     }
 

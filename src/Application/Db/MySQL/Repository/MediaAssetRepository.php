@@ -7,6 +7,7 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaAssetResource;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -29,16 +30,16 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
         return MediaAssetResource::class;
     }
 
-    public function findById(string $id): ?MediaAssetResource
+    public function findById(string $id): ?MediaAsset
     {
-        /** @var MediaAssetResource|null */
+        /** @var MediaAsset|null */
         return $this->system()->findById($id);
     }
 
-    public function save(MediaAssetResource $entity): MediaAssetResource
+    public function save(MediaAsset $entity): MediaAsset
     {
-        if ($entity->id === '') {
-            /** @var MediaAssetResource */
+        if ($entity->getId() === '') {
+            /** @var MediaAsset */
             return $this->system()->insert($entity);
         }
 
@@ -46,31 +47,31 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
         // model — the row is rebuilt via copyWith). Route by actual
         // existence, otherwise the first save() becomes a silent 0-row
         // UPDATE and the asset never lands.
-        /** @var MediaAssetResource */
-        return $this->findById($entity->id) === null
+        /** @var MediaAsset */
+        return $this->findById($entity->getId()) === null
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }
 
     public function findByTenantAndCollection(string $tenantId, string $collectionKey, int $limit = 100): array
     {
-        /** @var list<MediaAssetResource> */
+        /** @var list<MediaAsset> */
         return $this->system()->query()
             ->where(MediaAssetResource::column('tenant_id'), Operator::Equals, $tenantId)
             ->where(MediaAssetResource::column('collection_key'), Operator::Equals, $collectionKey)
             ->limit($limit)
-            ->fetchAllAs(MediaAssetResource::class, $this->orm()->getMapperRegistry());
+            ->fetchAllAs(MediaAsset::class, $this->orm()->getMapperRegistry());
     }
 
-    public function findByTenantAndSha256(string $tenantId, string $sha256): ?MediaAssetResource
+    public function findByTenantAndSha256(string $tenantId, string $sha256): ?MediaAsset
     {
-        /** @var list<MediaAssetResource> $rows */
+        /** @var list<MediaAsset> $rows */
         $rows = $this->system()->query()
             ->where(MediaAssetResource::column('tenant_id'), Operator::Equals, $tenantId)
             ->where(MediaAssetResource::column('sha256'), Operator::Equals, $sha256)
             ->where(MediaAssetResource::column('status'), Operator::NotEquals, 'deleted')
             ->limit(1)
-            ->fetchAllAs(MediaAssetResource::class, $this->orm()->getMapperRegistry());
+            ->fetchAllAs(MediaAsset::class, $this->orm()->getMapperRegistry());
 
         return $rows[0] ?? null;
     }
@@ -121,7 +122,7 @@ class MediaAssetRepository extends AbstractMediaRepository implements MediaAsset
     {
         return $this->repository ??= $this->orm()->repository(
             MediaAssetResource::class,
-            MediaAssetResource::class,
+            MediaAsset::class,
         );
     }
 

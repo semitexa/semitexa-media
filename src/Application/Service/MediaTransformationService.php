@@ -6,7 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
-use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
+use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Domain\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
 use Semitexa\Media\Domain\Model\MediaCollection;
@@ -29,15 +29,15 @@ final class MediaTransformationService
         string $originalPath,
         string $assetId,
         string $tenantId,
-        MediaVariantResource $variant,
+        MediaVariant $variant,
         MediaCollection $collection,
     ): VariantGenerationResult {
-        $preset = $collection->findPreset($variant->variant_key);
+        $preset = $collection->findPreset($variant->getVariantKey());
 
         if ($preset === null) {
             return VariantGenerationResult::failure(
                 'preset_not_found',
-                "Transform preset '{$variant->variant_key}' not found in collection '{$collection->collectionKey}'.",
+                "Transform preset '{$variant->getVariantKey()}' not found in collection '{$collection->getCollectionKey()}'.",
             );
         }
 
@@ -57,9 +57,9 @@ final class MediaTransformationService
 
         $storagePath = $this->pathBuilder->build(
             $tenantId,
-            $collection->collectionKey,
+            $collection->getCollectionKey(),
             $assetId,
-            $variant->variant_key,
+            $variant->getVariantKey(),
             $preset->format,
         );
 

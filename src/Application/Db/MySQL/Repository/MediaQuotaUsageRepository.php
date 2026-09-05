@@ -7,6 +7,7 @@ namespace Semitexa\Media\Application\Db\MySQL\Repository;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesRepositoryContract;
 use Semitexa\Media\Application\Db\MySQL\Model\MediaQuotaUsageResource;
+use Semitexa\Media\Domain\Model\MediaQuotaUsage;
 use Semitexa\Media\Domain\Contract\MediaQuotaUsageRepositoryInterface;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Orm\Query\Operator;
@@ -29,19 +30,29 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
 
     private ?DomainRepository $system = null;
 
-    public function findByBucket(string $tenantId, string $quotaBucket): ?MediaQuotaUsageResource
+    public function findByBucket(string $tenantId, string $quotaBucket): ?MediaQuotaUsage
     {
-        /** @var MediaQuotaUsageResource|null */
+        /** @var MediaQuotaUsage|null */
         return $this->system()->query()
             ->where(MediaQuotaUsageResource::column('tenant_id'), Operator::Equals, $tenantId)
             ->where(MediaQuotaUsageResource::column('quota_bucket'), Operator::Equals, $quotaBucket)
-            ->fetchOneAs(MediaQuotaUsageResource::class, $this->orm()->getMapperRegistry());
+            ->fetchOneAs(MediaQuotaUsage::class, $this->orm()->getMapperRegistry());
     }
 
-    public function save(MediaQuotaUsageResource $entity): MediaQuotaUsageResource
+    public function save(MediaQuotaUsage $entity): MediaQuotaUsage
     {
-        /** @var MediaQuotaUsageResource */
-        return $entity->id === ''
+        if ($entity->getId() === '') {
+            /** @var MediaQuotaUsage */
+            return $this->system()->insert($entity);
+        }
+
+        // The recalculator mints an id for a bucket it did NOT find, so a
+        // non-empty id is not evidence of a row. Routing on the id alone made
+        // the first recalculation a silent 0-row UPDATE: nothing landed, the
+        // next read still found nothing, and the bucket never came into being.
+        // Same reasoning as MediaAssetRepository::save().
+        /** @var MediaQuotaUsage */
+        return $this->findByBucket($entity->getTenantId(), $entity->getQuotaBucket()) === null
             ? $this->system()->insert($entity)
             : $this->system()->update($entity);
     }
@@ -85,7 +96,7 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
     {
         return $this->repository ??= $this->orm()->repository(
             MediaQuotaUsageResource::class,
-            MediaQuotaUsageResource::class,
+            MediaQuotaUsage::class,
         );
     }
 
