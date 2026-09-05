@@ -40,5 +40,15 @@ interface MediaServiceInterface
      */
     public function readObject(string $assetId, ?string $variantKey = null): ?MediaObjectContents;
 
+    /**
+     * Whether the asset exists and belongs to that collection.
+     *
+     * A route that serves one collection's files has to be able to say so. An
+     * asset id is otherwise a bearer token: every other collection — the
+     * private ones included — answers to the same route, and the only thing
+     * between a reader and someone else's file is not knowing the id.
+     */
+    public function belongsToCollection(string $assetId, string $collectionKey): bool;
+
     public function queueRegeneration(string $assetId, ?string $variantKey = null): void;
 }

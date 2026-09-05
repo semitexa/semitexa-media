@@ -6,6 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
+use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaServiceInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
@@ -26,6 +27,9 @@ final class MediaService implements MediaServiceInterface
 
     #[InjectAsReadonly]
     protected MediaObjectLocator $objectLocator;
+
+    #[InjectAsReadonly]
+    protected MediaAssetRepositoryInterface $assetRepository;
 
     #[InjectAsReadonly]
     protected StorageObjectStoreInterface $storage;
@@ -98,6 +102,11 @@ final class MediaService implements MediaServiceInterface
         }
 
         return new MediaObjectContents($contents, $object->mimeType);
+    }
+
+    public function belongsToCollection(string $assetId, string $collectionKey): bool
+    {
+        return $this->assetRepository->findById($assetId)?->getCollectionKey() === $collectionKey;
     }
 
     public function queueRegeneration(string $assetId, ?string $variantKey = null): void
