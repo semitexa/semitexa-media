@@ -66,12 +66,12 @@ final class MediaCollectionMapper implements ResourceModelMapperInterface
             media_kind: $domainModel->getMediaKind()->value,
             visibility_default: $domainModel->getVisibilityDefault()->value,
             quota_bucket: $domainModel->getQuotaBucket(),
-            allowed_mime_types_json: (string) json_encode($domainModel->getAllowedMimeTypes(), JSON_UNESCAPED_SLASHES),
+            allowed_mime_types_json: (string) json_encode($domainModel->getAllowedMimeTypes(), JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES),
             max_original_bytes: $domainModel->getMaxOriginalBytes(),
             max_width: $domainModel->getMaxWidth(),
             max_height: $domainModel->getMaxHeight(),
             max_asset_count: $domainModel->getMaxAssetCount(),
-            transform_profile_json: (string) json_encode($profile, JSON_UNESCAPED_SLASHES),
+            transform_profile_json: (string) json_encode($profile, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES),
         );
     }
 
