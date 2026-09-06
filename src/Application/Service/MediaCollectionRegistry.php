@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Application\Service;
 
+use Psr\Container\ContainerInterface;
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
-use Semitexa\Core\Container\ContainerFactory;
 use Semitexa\Core\Discovery\ClassDiscovery;
 use Semitexa\Media\Attribute\AsMediaCollectionProvider;
 use Semitexa\Media\Domain\Contract\MediaCollectionProviderInterface;
@@ -30,6 +30,14 @@ use Semitexa\Media\Domain\Model\ImageTransformPreset;
 #[AsService]
 final class MediaCollectionRegistry
 {
+    /**
+     * Injected rather than reached for statically. Providers are usually plain
+     * definition holders, so the container is consulted only to give one that
+     * wants injected dependencies a chance to get them.
+     */
+    #[InjectAsReadonly]
+    protected ContainerInterface $container;
+
     #[InjectAsReadonly]
     protected ClassDiscovery $classDiscovery;
 
@@ -94,7 +102,12 @@ final class MediaCollectionRegistry
             // Providers are usually pure definition holders; #[AsService]
             // is only needed when the provider wants injected dependencies.
             try {
-                $provider = ContainerFactory::get()->get($class);
+                // isset(): the injected property is UNINITIALIZED, not null,
+                // when this registry is built outside the container — reading
+                // it directly would throw rather than fall through.
+                $provider = isset($this->container)
+                    ? $this->container->get($class)
+                    : new $class();
             } catch (\Throwable) {
                 $provider = new $class();
             }
