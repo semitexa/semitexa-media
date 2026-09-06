@@ -101,16 +101,28 @@ final class MediaCollectionRegistry
         foreach ($this->classDiscovery->findClassesWithAttribute(AsMediaCollectionProvider::class) as $class) {
             // Providers are usually pure definition holders; #[AsService]
             // is only needed when the provider wants injected dependencies.
-            try {
-                // isset(): the injected property is UNINITIALIZED, not null,
-                // when this registry is built outside the container — reading
-                // it directly would throw rather than fall through.
-                $provider = isset($this->container)
-                    ? $this->container->get($class)
-                    : new $class();
-            } catch (\Throwable) {
-                $provider = new $class();
+            // The container branch is the only one inside the try. Constructing
+            // the provider directly there too meant a throwing constructor was
+            // answered by running that same constructor AGAIN in the catch —
+            // repeating whatever side effects it managed before failing, and
+            // discarding the original error in favour of the second one.
+            //
+            // isset(): the injected property is UNINITIALIZED, not null, when
+            // this registry is built outside the container, and reading it
+            // directly would throw rather than fall through.
+            $provider = null;
+            if (isset($this->container)) {
+                try {
+                    $provider = $this->container->get($class);
+                } catch (\Throwable) {
+                    // Providers are usually plain definition holders; the
+                    // container is only consulted so one that wants injected
+                    // dependencies can have them.
+                    $provider = null;
+                }
             }
+
+            $provider ??= new $class();
             if (!$provider instanceof MediaCollectionProviderInterface) {
                 continue;
             }
