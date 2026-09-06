@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Console\Command;
 
 use Semitexa\Core\Attribute\AsCommand;
-use Semitexa\Core\Container\ContainerFactory;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Console\BaseCommand;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,8 +15,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'media:failed-variants', description: 'List failed media variant generation jobs')]
-final class MediaListFailedVariantsCommand extends Command
+final class MediaListFailedVariantsCommand extends BaseCommand
 {
+    #[InjectAsReadonly]
+    protected MediaVariantRepositoryInterface $repo;
+
     protected function configure(): void
     {
         $this
@@ -43,12 +47,10 @@ final class MediaListFailedVariantsCommand extends Command
         $assetId = $input->getOption('asset');
 
         try {
-            $container = ContainerFactory::get();
-            $repo      = $container->get(MediaVariantRepositoryInterface::class);
 
             $variants = $assetId !== null
-                ? $repo->findFailedByAssetId($assetId)
-                : $repo->findFailed($limit);
+                ? $this->repo->findFailedByAssetId($assetId)
+                : $this->repo->findFailed($limit);
 
             if ($variants === []) {
                 $io->success('No failed variants found.');

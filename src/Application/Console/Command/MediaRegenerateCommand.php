@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Console\Command;
 
 use Semitexa\Core\Attribute\AsCommand;
-use Semitexa\Core\Container\ContainerFactory;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Console\BaseCommand;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaServiceInterface;
 use Symfony\Component\Console\Command\Command;
@@ -16,8 +17,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'media:regenerate', description: 'Queue variant regeneration for one asset or all assets in a collection')]
-final class MediaRegenerateCommand extends Command
+final class MediaRegenerateCommand extends BaseCommand
 {
+    #[InjectAsReadonly]
+    protected MediaServiceInterface $mediaService;
+
+    #[InjectAsReadonly]
+    protected MediaAssetRepositoryInterface $assetRepository;
+
     protected function configure(): void
     {
         $this
@@ -66,11 +73,9 @@ final class MediaRegenerateCommand extends Command
         $io->title('Media regeneration');
 
         try {
-            $container    = ContainerFactory::get();
-            $mediaService = $container->get(MediaServiceInterface::class);
 
             if ($assetId !== null) {
-                $mediaService->queueRegeneration($assetId, $variantKey);
+                $this->mediaService->queueRegeneration($assetId, $variantKey);
                 $io->success("Queued regeneration for asset '{$assetId}'" . ($variantKey ? " variant '{$variantKey}'" : ' (all variants)'));
                 return Command::SUCCESS;
             }
@@ -81,12 +86,11 @@ final class MediaRegenerateCommand extends Command
                     return Command::FAILURE;
                 }
 
-                $assetRepo = $container->get(MediaAssetRepositoryInterface::class);
-                $assets    = $assetRepo->findByTenantAndCollection($tenantId, $collection, $batchSize);
+                $assets = $this->assetRepository->findByTenantAndCollection($tenantId, $collection, $batchSize);
 
                 $queued = 0;
                 foreach ($assets as $asset) {
-                    $mediaService->queueRegeneration($asset->id, $variantKey);
+                    $this->mediaService->queueRegeneration($asset->getId(), $variantKey);
                     $queued++;
                 }
 
