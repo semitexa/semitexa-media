@@ -10,6 +10,7 @@ use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\LocatedMediaObject;
+use Semitexa\Tenancy\Context\CoroutineContextStore;
 
 /**
  * Picks the stored object behind an asset: the variant when it is ready, the
@@ -20,6 +21,13 @@ use Semitexa\Media\Domain\Model\LocatedMediaObject;
  * original in the meantime. Both callers that do (the URL generator and the
  * byte reader) must make that choice identically, and two copies of the rule
  * are two copies that can drift, so it lives here once.
+ *
+ * The asset is looked up before anything else because that lookup is also the
+ * authorization: `findById()` carries no tenant predicate, and an asset id is
+ * public — it is written into the article markup that names the picture. An
+ * unscoped read here would let one tenant's page address another tenant's
+ * files. An asset outside the caller's tenant is answered as absent, which is
+ * what it is from where the caller stands.
  */
 #[AsService]
 final class MediaObjectLocator
@@ -32,6 +40,12 @@ final class MediaObjectLocator
 
     public function locate(string $assetId, ?string $variantKey = null): ?LocatedMediaObject
     {
+        $asset = $this->assetRepository->findById($assetId);
+
+        if ($asset === null || ($asset->getTenantId() ?? '') !== $this->currentTenantId()) {
+            return null;
+        }
+
         if ($variantKey !== null) {
             $variant = $this->variantRepository->findByAssetAndKey($assetId, $variantKey);
 
@@ -45,27 +59,27 @@ final class MediaObjectLocator
                     // A variant records the type it was encoded to; before the
                     // transform ran there is nothing to record, and the asset's
                     // own type is the honest answer.
-                    mimeType: $variant->getMimeType() ?? $this->assetMimeType($assetId),
+                    mimeType: $variant->getMimeType() ?? $asset->getMimeType(),
                     version: $variant->getGeneratedAt(),
+                    collectionKey: $asset->getCollectionKey(),
                 );
             }
-        }
-
-        $asset = $this->assetRepository->findById($assetId);
-
-        if ($asset === null) {
-            return null;
         }
 
         return new LocatedMediaObject(
             path: $asset->getOriginalPath(),
             mimeType: $asset->getMimeType(),
             version: $asset->getReadyAt() ?? $asset->getCreatedAt(),
+            collectionKey: $asset->getCollectionKey(),
         );
     }
 
-    private function assetMimeType(string $assetId): string
+    /**
+     * The tenant the caller is acting as — '' on an installation that runs
+     * without tenancy, which is also what ingest recorded on those assets.
+     */
+    private function currentTenantId(): string
     {
-        return $this->assetRepository->findById($assetId)?->getMimeType() ?? 'application/octet-stream';
+        return CoroutineContextStore::get()?->getTenantId() ?? '';
     }
 }

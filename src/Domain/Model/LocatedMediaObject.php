@@ -10,6 +10,11 @@ namespace Semitexa\Media\Domain\Model;
  * `version` is the moment those bytes came into being — the variant's
  * generation time, or the asset's own — and is what cache-busts a URL that
  * otherwise never changes.
+ *
+ * `collectionKey` is always the asset's, never the variant's: a variant is a
+ * rendition of its asset and belongs wherever the asset does. It travels with
+ * the location so a route that serves one collection can refuse the rest
+ * without a second lookup.
  */
 final readonly class LocatedMediaObject
 {
@@ -17,5 +22,6 @@ final readonly class LocatedMediaObject
         public string $path,
         public string $mimeType,
         public ?\DateTimeImmutable $version,
+        public string $collectionKey,
     ) {}
 }

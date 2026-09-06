@@ -6,7 +6,6 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
-use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaServiceInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
@@ -27,9 +26,6 @@ final class MediaService implements MediaServiceInterface
 
     #[InjectAsReadonly]
     protected MediaObjectLocator $objectLocator;
-
-    #[InjectAsReadonly]
-    protected MediaAssetRepositoryInterface $assetRepository;
 
     #[InjectAsReadonly]
     protected StorageObjectStoreInterface $storage;
@@ -106,7 +102,10 @@ final class MediaService implements MediaServiceInterface
 
     public function belongsToCollection(string $assetId, string $collectionKey): bool
     {
-        return $this->assetRepository->findById($assetId)?->getCollectionKey() === $collectionKey;
+        // Through the locator, so this answers under the same tenant scope
+        // the read paths use: an asset another tenant owns belongs to no
+        // collection as far as this caller is concerned.
+        return $this->objectLocator->locate($assetId)?->collectionKey === $collectionKey;
     }
 
     public function queueRegeneration(string $assetId, ?string $variantKey = null): void

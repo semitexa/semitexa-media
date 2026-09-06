@@ -36,17 +36,21 @@ interface MediaServiceInterface
      * install), where an application that will not read the bytes itself has
      * no way to show the image.
      *
-     * Null when the id names nothing, or the object is gone from storage.
+     * Null when the id names nothing here — no such asset, another tenant's
+     * asset — or the object is gone from storage.
      */
     public function readObject(string $assetId, ?string $variantKey = null): ?MediaObjectContents;
 
     /**
-     * Whether the asset exists and belongs to that collection.
+     * Whether the asset exists, is the caller's tenant's, and belongs to that
+     * collection.
      *
      * A route that serves one collection's files has to be able to say so. An
      * asset id is otherwise a bearer token: every other collection — the
      * private ones included — answers to the same route, and the only thing
-     * between a reader and someone else's file is not knowing the id.
+     * between a reader and someone else's file is not knowing the id. Ids are
+     * not secret either: they are written into the article markup that names
+     * the picture.
      */
     public function belongsToCollection(string $assetId, string $collectionKey): bool;
 
