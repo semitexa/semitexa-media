@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Console\Command;
 
 use Semitexa\Core\Attribute\AsCommand;
-use Semitexa\Core\Container\ContainerFactory;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Console\BaseCommand;
 use Semitexa\Media\Domain\Contract\MediaQuotaManagerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,8 +16,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'media:quota:recalculate', description: 'Recalculate tenant media quota usage from authoritative asset table')]
-final class MediaQuotaRecalculateCommand extends Command
+final class MediaQuotaRecalculateCommand extends BaseCommand
 {
+    #[InjectAsReadonly]
+    protected MediaQuotaManagerInterface $quotaManager;
+
     protected function configure(): void
     {
         $this
@@ -46,10 +50,8 @@ final class MediaQuotaRecalculateCommand extends Command
         $io->comment("Recalculating quota for tenant '{$tenantId}' in bucket '{$bucket}'...");
 
         try {
-            $container    = ContainerFactory::get();
-            $quotaManager = $container->get(MediaQuotaManagerInterface::class);
 
-            $quotaManager->recalculate($tenantId, $bucket);
+            $this->quotaManager->recalculate($tenantId, $bucket);
 
             $io->success("Quota recalculated for tenant '{$tenantId}' in bucket '{$bucket}'.");
         } catch (\Throwable $e) {

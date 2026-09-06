@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Semitexa\Media\Application\Console\Command;
 
 use Semitexa\Core\Attribute\AsCommand;
-use Semitexa\Core\Container\ContainerFactory;
+use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Console\BaseCommand;
 use Semitexa\Media\Application\Service\MediaWorker;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -14,8 +15,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'media:work', description: 'Run the dedicated media variant generation worker')]
-final class MediaWorkCommand extends Command
+final class MediaWorkCommand extends BaseCommand
 {
+    #[InjectAsReadonly]
+    protected MediaWorker $worker;
+
     protected function configure(): void
     {
         $this
@@ -52,11 +56,8 @@ final class MediaWorkCommand extends Command
             // property injection. As a bonus, MediaCollectionPolicyResolver
             // now sees the boot-time-populated registry rather than the empty
             // freshly-`new`d one the previous code passed in.
-            $container = ContainerFactory::get();
-
-            $worker = $container->get(MediaWorker::class);
-            $worker->setOutput($output);
-            $worker->run($transport, $queue);
+            $this->worker->setOutput($output);
+            $this->worker->run($transport, $queue);
         } catch (\Throwable $e) {
             $io->error('Media worker failed: ' . $e->getMessage());
             return Command::FAILURE;
