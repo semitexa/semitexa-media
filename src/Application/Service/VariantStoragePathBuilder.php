@@ -24,16 +24,11 @@ final class VariantStoragePathBuilder
     ): string {
         return sprintf(
             'media/%s/%s/%s/%s.%s',
-            $this->sanitizeSegment($tenantId),
-            $this->sanitizeSegment($collectionKey),
+            MediaPathSegment::of($tenantId),
+            MediaPathSegment::of($collectionKey),
             $assetId,
-            $this->sanitizeSegment($variantKey),
+            MediaPathSegment::of($variantKey),
             $format->toExtension(),
         );
-    }
-
-    private function sanitizeSegment(string $value): string
-    {
-        return preg_replace('/[^a-zA-Z0-9\-_]/', '_', $value) ?? $value;
     }
 }

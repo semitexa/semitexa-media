@@ -17,8 +17,8 @@ final class OriginalStoragePathBuilder
 
         return sprintf(
             'media/%s/%s/%s/original.%s',
-            $this->sanitizeSegment($tenantId),
-            $this->sanitizeSegment($collectionKey),
+            MediaPathSegment::of($tenantId),
+            MediaPathSegment::of($collectionKey),
             $assetId,
             $ext,
         );
@@ -35,10 +35,5 @@ final class OriginalStoragePathBuilder
             'image/tiff' => 'tiff',
             default      => 'bin',
         };
-    }
-
-    private function sanitizeSegment(string $value): string
-    {
-        return preg_replace('/[^a-zA-Z0-9\-_]/', '_', $value) ?? $value;
     }
 }
