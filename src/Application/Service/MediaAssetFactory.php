@@ -9,7 +9,6 @@ use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Domain\Model\MediaCollection;
 use Semitexa\Media\Domain\Enum\MediaAssetStatus;
 use Semitexa\Media\Domain\Model\ImageMetadata;
-use Semitexa\Orm\Application\Service\Uuid7;
 
 #[AsService]
 final class MediaAssetFactory

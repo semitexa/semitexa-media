@@ -11,7 +11,6 @@ use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
-use Semitexa\Orm\Application\Service\Uuid7;
 use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 
 #[AsService]
