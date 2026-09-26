@@ -39,6 +39,18 @@ final class ImagickPixelFloodTest extends TestCase
     }
 
     #[Test]
+    public function a_non_positive_limit_is_reported_as_misconfiguration(): void
+    {
+        $processor = new ImagickImageProcessor();
+        (new \ReflectionProperty($processor, 'maxPixels'))->setValue($processor, 0);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('MEDIA_MAX_IMAGE_PIXELS must be a positive integer, got 0.');
+
+        $processor->inspect(self::pngDeclaring(1, 1));
+    }
+
+    #[Test]
     public function an_ordinary_image_is_still_inspected(): void
     {
         $image = new \Imagick();

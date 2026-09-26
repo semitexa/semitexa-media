@@ -219,6 +219,15 @@ final class ImagickImageProcessor implements ImageProcessorInterface
     /** Reads only the header (pingImageBlob), so an oversized image is refused before any pixel is allocated. */
     private function assertDeclaredSizeWithinLimit(string $bytes): void
     {
+        // Zero is not "no limit": it would refuse every image with a message
+        // blaming the image. Name the misconfiguration instead.
+        if ($this->maxPixels < 1) {
+            throw new \LogicException(sprintf(
+                'MEDIA_MAX_IMAGE_PIXELS must be a positive integer, got %d.',
+                $this->maxPixels,
+            ));
+        }
+
         try {
             $probe = new \Imagick();
             $probe->pingImageBlob($bytes);
