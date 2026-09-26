@@ -10,7 +10,7 @@ use Semitexa\Media\Application\Service\ImagickImageProcessor;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
 
 /**
- * A "pixel flood" file: a few dozen bytes of PNG that declare 100000x100000.
+ * A "pixel flood" file: a few dozen bytes of PNG that declare a huge size.
  * Decoding it would allocate the whole pixel buffer before any size check;
  * it must be refused from its header alone.
  */
@@ -26,10 +26,16 @@ final class ImagickPixelFloodTest extends TestCase
     #[Test]
     public function an_image_declaring_too_many_pixels_is_refused_before_decoding(): void
     {
-        $this->expectException(MediaProcessingException::class);
-        $this->expectExceptionMessageMatches('/100000x100000/');
+        // libpng itself refuses absurd widths, so the flood is scaled down to
+        // a lowered limit: 200x200 declared against 10000 pixels allowed. The
+        // IDAT is empty, so only a header-only check can produce this message.
+        $processor = new ImagickImageProcessor();
+        (new \ReflectionProperty($processor, 'maxPixels'))->setValue($processor, 10_000);
 
-        (new ImagickImageProcessor())->inspect(self::pngDeclaring(100_000, 100_000));
+        $this->expectException(MediaProcessingException::class);
+        $this->expectExceptionMessageMatches('/200x200 \\(40000 pixels.*10000-pixel limit/');
+
+        $processor->inspect(self::pngDeclaring(200, 200));
     }
 
     #[Test]
