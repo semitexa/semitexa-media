@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Semitexa\Media\Application\Service;
 
+use Semitexa\Core\Attribute\Config;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
 use Semitexa\Media\Domain\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
@@ -14,6 +15,15 @@ use Semitexa\Media\Domain\Model\ImageTransformPreset;
 #[SatisfiesServiceContract(of: ImageProcessorInterface::class)]
 final class ImagickImageProcessor implements ImageProcessorInterface
 {
+    /**
+     * Pixels (width x height x frames) an image may DECLARE before it is
+     * decoded. A few KB of PNG can declare 100000x100000; decoding it
+     * allocates the whole pixel buffer before any collection size check
+     * runs, and takes the long-lived worker down with it.
+     */
+    #[Config(env: 'MEDIA_MAX_IMAGE_PIXELS', default: 100_000_000)]
+    protected int $maxPixels = 100_000_000;
+
     public function isAvailable(): bool
     {
         return class_exists(\Imagick::class);
@@ -194,6 +204,8 @@ final class ImagickImageProcessor implements ImageProcessorInterface
             throw new MediaProcessingException('Cannot process empty image bytes.');
         }
 
+        $this->assertDeclaredSizeWithinLimit($bytes);
+
         try {
             $imagick = new \Imagick();
             $imagick->readImageBlob($bytes);
@@ -201,6 +213,34 @@ final class ImagickImageProcessor implements ImageProcessorInterface
             return $imagick;
         } catch (\ImagickException $e) {
             throw new MediaProcessingException("Failed to read image: {$e->getMessage()}", $e);
+        }
+    }
+
+    /** Reads only the header (pingImageBlob), so an oversized image is refused before any pixel is allocated. */
+    private function assertDeclaredSizeWithinLimit(string $bytes): void
+    {
+        try {
+            $probe = new \Imagick();
+            $probe->pingImageBlob($bytes);
+            $pixels = $width = $height = 0;
+            foreach ($probe as $frame) {
+                $width = max($width, $frame->getImageWidth());
+                $height = max($height, $frame->getImageHeight());
+                $pixels += $frame->getImageWidth() * $frame->getImageHeight();
+            }
+            $probe->clear();
+        } catch (\ImagickException $e) {
+            throw new MediaProcessingException("Failed to read image: {$e->getMessage()}", $e);
+        }
+
+        if ($pixels > $this->maxPixels) {
+            throw new MediaProcessingException(sprintf(
+                'Image declares %dx%d (%d pixels over all frames), above the %d-pixel limit (MEDIA_MAX_IMAGE_PIXELS).',
+                $width,
+                $height,
+                $pixels,
+                $this->maxPixels,
+            ));
         }
     }
 }
