@@ -8,6 +8,7 @@ use Semitexa\Core\Attribute\Config;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
 use Semitexa\Media\Domain\Contract\ImageProcessorInterface;
 use Semitexa\Media\Domain\Exception\MediaProcessingException;
+use Semitexa\Media\Domain\Enum\OutputFormat;
 use Semitexa\Media\Domain\Enum\ResizeMode;
 use Semitexa\Media\Domain\Model\ImageMetadata;
 use Semitexa\Media\Domain\Model\ImageTransformPreset;
@@ -158,6 +159,24 @@ final class ImagickImageProcessor implements ImageProcessorInterface
         $format  = strtoupper($preset->format->value === 'jpeg' ? 'JPEG' : strtoupper($preset->format->value));
         $quality = $preset->quality;
 
+        // JPEG has no alpha: left to the encoder, a transparent pixel comes out
+        // black, so a logo uploaded as PNG got a black box. Flatten onto the fill.
+        if ($preset->format === OutputFormat::Jpeg && $imagick->getImageAlphaChannel()) {
+            $imagick->setImageBackgroundColor(new \ImagickPixel($preset->backgroundFill ?? '#ffffff'));
+            $flattened = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+
+            try {
+                return $this->blob($flattened, $format, $quality);
+            } finally {
+                $flattened->clear();
+            }
+        }
+
+        return $this->blob($imagick, $format, $quality);
+    }
+
+    private function blob(\Imagick $imagick, string $format, int $quality): string
+    {
         $imagick->setImageFormat($format);
         $imagick->setImageCompressionQuality($quality);
 
