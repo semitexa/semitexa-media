@@ -31,6 +31,11 @@
         "semitexa-module": {
             "name": "media",
             "description": "Image-first media asset management: async variants, tenant-aware quotas, CDN-ready delivery URLs"
+        },
+        "semitexa": {
+            "floors": {
+                "semitexa/core": "next"
+            }
         }
     },
     "keywords": [
