@@ -30,6 +30,8 @@ final class MediaWorkerProcesses implements WorkerProcessSourceInterface
             return [];
         }
 
-        return [new WorkerProcess(['media:work', $transport, $this->config->workerQueue()])];
+        $queue = $this->config->workerQueue();
+
+        return [new WorkerProcess(['media:work', $transport, $queue], reads: [$transport, $queue])];
     }
 }

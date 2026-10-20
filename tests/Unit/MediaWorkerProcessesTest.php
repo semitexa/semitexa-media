@@ -53,8 +53,21 @@ final class MediaWorkerProcessesTest extends TestCase
         self::assertSame([], $this->lines(transport: '', queue: 'media'));
     }
 
+    /** So worker:processes can refuse another kind of worker on the media queue (tk-nats-consumer-name-collision). */
+    #[Test]
+    public function media_work_says_which_queue_it_reads(): void
+    {
+        self::assertSame([['database', 'thumbs']], array_map(static fn (WorkerProcess $p): ?array => $p->reads, $this->processes('database', 'thumbs')));
+    }
+
     /** @return list<string> */
     private function lines(string $transport, string $queue): array
+    {
+        return array_map(static fn (WorkerProcess $p): string => $p->line(), $this->processes($transport, $queue));
+    }
+
+    /** @return list<WorkerProcess> */
+    private function processes(string $transport, string $queue): array
     {
         $config = (new \ReflectionClass(MediaConfig::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($config, 'workerTransport'))->setValue($config, $transport);
@@ -62,6 +75,6 @@ final class MediaWorkerProcessesTest extends TestCase
         $source = new MediaWorkerProcesses();
         (new \ReflectionProperty($source, 'config'))->setValue($source, $config);
 
-        return array_map(static fn (WorkerProcess $p): string => $p->line(), $source->workerProcesses());
+        return $source->workerProcesses();
     }
 }
