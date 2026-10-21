@@ -14,6 +14,7 @@ use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
 use Semitexa\Core\Queue\QueueConfig;
+use Semitexa\Core\Queue\QueueStatsRecorder;
 use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -37,6 +38,9 @@ final class MediaWorker
     protected MediaTransformationService $transformationService;
 
     private ?string $currentTransport = null;
+    private ?string $currentQueue = null;
+    private ?QueueStatsRecorder $stats = null;
+    private bool $statsResolved = false;
     private ?OutputInterface $output = null;
     private string $workerId = '';
 
@@ -50,6 +54,7 @@ final class MediaWorker
         $this->initializeWorkerId();
         $this->currentTransport = $transportName ?: QueueConfig::defaultTransport();
         $queue = $queueName ?: $this->config->workerQueue();
+        $this->currentQueue = $queue;
 
         $transport = QueueTransportRegistry::create($this->currentTransport);
 
@@ -118,34 +123,62 @@ final class MediaWorker
             return;
         }
 
-        $this->processMessage($message);
+        $startedAt = microtime(true);
+        $done = $this->processMessage($message);
+        $this->recordStats($done, $startedAt);
     }
 
-    private function processMessage(QueuedMediaTransformMessage $message): void
+    /**
+     * A variant made or failed, into the per-queue counters queue:work writes
+     * (queue:stats, the Queues app). A message skipped (its asset or variant
+     * gone, already ready, out of attempts) counts nothing; a failed variant
+     * is not retried, so it counts as dead-lettered. No wait: queuedAt has
+     * whole seconds, which would put every wait in the 1 s bucket.
+     */
+    private function recordStats(?bool $done, float $startedAt): void
+    {
+        if ($done === null || $this->currentQueue === null) {
+            return;
+        }
+        if (!$this->statsResolved) {
+            $this->statsResolved = true;
+            $this->stats = QueueStatsRecorder::fromEnvironment();
+        }
+        $this->stats?->record(
+            $this->currentQueue,
+            $done ? 'processed' : 'dead_lettered',
+            false,
+            null,
+            (int) round((microtime(true) - $startedAt) * 1000),
+        );
+    }
+
+    /** @return bool|null whether the variant was made; null when the message was skipped */
+    private function processMessage(QueuedMediaTransformMessage $message): ?bool
     {
         $this->initializeWorkerId();
         $asset = $this->assetRepository->findById($message->assetId);
 
         if ($asset === null) {
             $this->log("Asset '{$message->assetId}' not found — discarding variant '{$message->variantKey}'.", 'warning');
-            return;
+            return null;
         }
 
         $variant = $this->variantRepository->findByAssetAndKey($message->assetId, $message->variantKey);
 
         if ($variant === null) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' not found — discarding.", 'warning');
-            return;
+            return null;
         }
 
         if ($variant->getStatus() === MediaVariantStatus::Ready->value) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' already ready — skipping.", 'info');
-            return;
+            return null;
         }
 
         if ($variant->getAttemptCount() >= $variant->getMaxAttempts()) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' exceeded max attempts — skipping.", 'warning');
-            return;
+            return null;
         }
 
         // Mark as processing (resources are readonly — continue with the row
@@ -159,7 +192,7 @@ final class MediaWorker
             'processingStartedAt' => $variant->getProcessingStartedAt() ?? new \DateTimeImmutable(),
         ]));
 
-        $this->transformVariant($asset, $variant);
+        return $this->transformVariant($asset, $variant);
     }
 
     /**
