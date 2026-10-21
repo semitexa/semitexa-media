@@ -107,7 +107,7 @@ class MediaQuotaUsageRepository extends AbstractMediaRepository implements Media
 
     private function adapter(): \Semitexa\Orm\Adapter\DatabaseAdapterInterface
     {
-        return $this->orm()->getAdapter();
+        return $this->orm()->getQueryAdapter();
     }
 
 }
