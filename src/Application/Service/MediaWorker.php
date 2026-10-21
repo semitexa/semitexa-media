@@ -15,6 +15,7 @@ use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
 use Semitexa\Core\Queue\QueueConfig;
 use Semitexa\Core\Queue\QueueStatsRecorder;
+use Semitexa\Core\Queue\QueueStopSignals;
 use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -57,6 +58,7 @@ final class MediaWorker
         $this->currentQueue = $queue;
 
         $transport = QueueTransportRegistry::create($this->currentTransport);
+        QueueStopSignals::install($transport, fn (string $message) => $this->log($message));
 
         $this->log("Media worker started (transport={$this->currentTransport}, queue={$queue}, worker={$this->workerId})");
 
