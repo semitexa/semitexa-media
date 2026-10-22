@@ -50,6 +50,32 @@ final class ImagickPixelFloodTest extends TestCase
         $processor->inspect(self::pngDeclaring(1, 1));
     }
 
+    /**
+     * ImageMagick sniffed the bytes and decoded XPM, PCX, PNM… for an upload
+     * declared image/jpeg. Only web raster formats reach it now.
+     */
+    #[Test]
+    public function an_image_in_a_format_a_web_page_does_not_show_is_refused_before_decoding(): void
+    {
+        $xpm = "/* XPM */\nstatic char *x[] = {\"1 1 1 1\", \"a c #000000\", \"a\"};\n";
+
+        $this->expectException(MediaProcessingException::class);
+        $this->expectExceptionMessage('supported format');
+
+        (new ImagickImageProcessor())->inspect($xpm);
+    }
+
+    /** ImageMagick reports BMP3, the BMP most tools write: image/bmp3 matched no declared type. */
+    #[Test]
+    public function a_bmp_of_any_header_version_is_image_bmp(): void
+    {
+        $image = new \Imagick();
+        $image->newImage(4, 4, 'white');
+        $image->setImageFormat('bmp3');
+
+        self::assertSame('image/bmp', (new ImagickImageProcessor())->inspect($image->getImageBlob())->mimeType);
+    }
+
     #[Test]
     public function an_ordinary_image_is_still_inspected(): void
     {

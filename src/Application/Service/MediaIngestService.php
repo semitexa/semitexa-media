@@ -69,6 +69,7 @@ final class MediaIngestService
         $this->validateByteSize(strlen($contents), $collection);
 
         $metadata = $this->metadataExtractor->extract($contents, $mimeType);
+        $this->assertBytesAreTheDeclaredType($metadata->mimeType, $mimeType);
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
 
@@ -144,6 +145,7 @@ final class MediaIngestService
         $this->validateByteSize(strlen($contents), $collection);
 
         $metadata = $this->metadataExtractor->extract($contents, $mimeType);
+        $this->assertBytesAreTheDeclaredType($metadata->mimeType, $mimeType);
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
 
@@ -194,6 +196,29 @@ final class MediaIngestService
             collectionKey: $collectionKey,
             originalUrl:   $this->storage->url($storagePath),
         );
+    }
+
+    /**
+     * The type the bytes are, not only the one declared: an upload said
+     * image/jpeg and was whatever it was, stored and served as declared.
+     */
+    private function assertBytesAreTheDeclaredType(string $detected, string $declared): void
+    {
+        if (self::canonicalMime($detected) !== self::canonicalMime($declared)) {
+            throw new MediaIngestException("The file was declared '{$declared}' but is '{$detected}'.");
+        }
+    }
+
+    private static function canonicalMime(string $mimeType): string
+    {
+        $mimeType = strtolower(trim(explode(';', $mimeType, 2)[0]));
+
+        return match ($mimeType) {
+            'image/jpg', 'image/pjpeg' => 'image/jpeg',
+            'image/x-png' => 'image/png',
+            'image/x-ms-bmp', 'image/x-bmp' => 'image/bmp',
+            default => $mimeType,
+        };
     }
 
     private function validateMimeType(string $mimeType, MediaCollection $collection): void

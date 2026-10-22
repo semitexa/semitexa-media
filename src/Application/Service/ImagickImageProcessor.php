@@ -190,8 +190,10 @@ final class ImagickImageProcessor implements ImageProcessorInterface
             'png'         => 'image/png',
             'webp'        => 'image/webp',
             'gif'         => 'image/gif',
-            'bmp'         => 'image/bmp',
-            'tiff', 'tif' => 'image/tiff',
+            // ImageMagick names a BMP by its header version: BMP3 is what
+            // most tools write, and image/bmp3 matched no declared type.
+            'bmp', 'bmp2', 'bmp3' => 'image/bmp',
+            'tiff', 'tif', 'tiff64' => 'image/tiff',
             default       => 'image/' . strtolower($format),
         };
     }
@@ -223,6 +225,7 @@ final class ImagickImageProcessor implements ImageProcessorInterface
             throw new MediaProcessingException('Cannot process empty image bytes.');
         }
 
+        self::assertWebRasterFormat($bytes);
         $this->assertDeclaredSizeWithinLimit($bytes);
 
         try {
@@ -232,6 +235,23 @@ final class ImagickImageProcessor implements ImageProcessorInterface
             return $imagick;
         } catch (\ImagickException $e) {
             throw new MediaProcessingException("Failed to read image: {$e->getMessage()}", $e);
+        }
+    }
+
+    /** Image types by their signature, read by PHP itself: no ImageMagick decoder has seen the bytes yet. */
+    private const WEB_RASTER_TYPES = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP, IMAGETYPE_AVIF, IMAGETYPE_BMP, IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM];
+
+    /**
+     * ImageMagick picked a decoder by sniffing the bytes, among the 215 the
+     * image builds in (XPM, PCX, PNM…, under its default open policy), and
+     * an upload declared image/jpeg went through whichever matched. Only the
+     * formats a web page shows reach it now.
+     */
+    private static function assertWebRasterFormat(string $bytes): void
+    {
+        $info = @getimagesizefromstring($bytes);
+        if ($info === false || !in_array($info[2], self::WEB_RASTER_TYPES, true)) {
+            throw new MediaProcessingException('Not an image in a supported format (JPEG, PNG, GIF, WebP, AVIF, BMP or TIFF).');
         }
     }
 
