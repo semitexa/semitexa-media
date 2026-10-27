@@ -11,6 +11,7 @@ use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
+use Semitexa\Orm\Application\Service\Queue\DatabaseQueueTransport;
 use Semitexa\Orm\OrmManager;
 use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 
@@ -33,17 +34,18 @@ final class MediaQueueDispatcher
 
         // Wrapped now, under the caller's tenant; published below.
         $payload = json_encode(TenantAwareJobSerializer::wrap($message->jsonSerialize()), JSON_THROW_ON_ERROR);
-        $publish = function () use ($payload): void {
-            QueueTransportRegistry::create($this->config->workerTransport() ?: QueueConfig::defaultTransport())
-                ->publish($this->config->workerQueue(), $payload);
+        $transport = QueueTransportRegistry::create($this->config->workerTransport() ?: QueueConfig::defaultTransport());
+        $publish = function () use ($transport, $payload): void {
+            $transport->publish($this->config->workerQueue(), $payload);
         };
 
-        // Inside the caller's transaction it goes once that commits: a broker
-        // handed it to a worker before the asset row was visible, the worker
-        // dropped it as "asset not found", and the variant was never made; a
-        // rollback still left the message behind.
+        // Inside the caller's transaction a broker's message goes once that
+        // commits: handed to a worker before the asset row was visible, it
+        // was dropped as "asset not found", and the variant was never made; a
+        // rollback still left it behind. The database queue joins the
+        // transaction itself, and stays in it.
         $transaction = isset($this->orm) ? $this->orm->getTransactionManager() : null;
-        if ($transaction !== null && $transaction->isActive()) {
+        if ($transaction !== null && $transaction->isActive() && !$transport instanceof DatabaseQueueTransport) {
             $transaction->afterCommit($publish);
 
             return;

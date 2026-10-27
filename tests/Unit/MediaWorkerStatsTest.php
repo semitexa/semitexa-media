@@ -58,7 +58,7 @@ final class MediaWorkerStatsTest extends TestCase
 
     /** Thrown past the variant's own handling, a message counted nothing. */
     #[Test]
-    public function a_message_whose_processing_throws_is_counted_and_the_error_kept(): void
+    public function a_message_whose_processing_throws_counts_as_retried_and_the_error_is_kept(): void
     {
         $store = new class implements QueueStatsStoreInterface {
             /** @var list<array<string, int|string>> */
@@ -78,7 +78,8 @@ final class MediaWorkerStatsTest extends TestCase
         } catch (\RuntimeException) {
         }
 
-        self::assertSame(1, $store->added[0]['dead_lettered'] ?? null);
+        self::assertSame(1, $store->added[0]['retried'] ?? null, 'the transport hands it back: not lost');
+        self::assertArrayNotHasKey('dead_lettered', $store->added[0]);
     }
 
     private function worker(): MediaWorker

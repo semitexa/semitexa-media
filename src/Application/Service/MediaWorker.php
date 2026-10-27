@@ -132,7 +132,8 @@ final class MediaWorker
         } catch (\Throwable $e) {
             // Thrown past the variant's own handling (its database, the queue):
             // nothing counted it, and queue:stats showed a worker doing nothing.
-            $this->recordStats(false, $startedAt);
+            // Retried, not lost: the transport hands it back.
+            $this->recordStats(false, $startedAt, retried: true);
             throw $e;
         }
         $this->recordStats($done, $startedAt);
@@ -145,7 +146,7 @@ final class MediaWorker
      * is not retried, so it counts as dead-lettered. No wait: queuedAt has
      * whole seconds, which would put every wait in the 1 s bucket.
      */
-    private function recordStats(?bool $done, float $startedAt): void
+    private function recordStats(?bool $done, float $startedAt, bool $retried = false): void
     {
         if ($done === null || $this->currentQueue === null) {
             return;
@@ -157,7 +158,7 @@ final class MediaWorker
         $this->stats?->record(
             $this->currentQueue,
             $done ? 'processed' : 'dead_lettered',
-            false,
+            $retried,
             null,
             (int) round((microtime(true) - $startedAt) * 1000),
         );
