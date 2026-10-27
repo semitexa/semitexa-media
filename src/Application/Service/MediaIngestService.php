@@ -77,14 +77,13 @@ final class MediaIngestService
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
 
-        $this->quotaManager->checkAndReserve($tenantId, $collection, $metadata->byteSize);
-
         $pathBuilder  = new OriginalStoragePathBuilder();
         $assetId      = $this->generateAssetId();
         $storagePath  = $pathBuilder->build($tenantId, $collectionKey, $assetId, $mimeType);
 
         $this->storage->put($storagePath, $contents, $mimeType);
         $this->removeIfRolledBack($storagePath);
+        $this->reserveOrRemove($tenantId, $collection, $metadata->byteSize, $storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -154,8 +153,6 @@ final class MediaIngestService
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
 
-        $this->quotaManager->checkAndReserve($tenantId, $collection, $metadata->byteSize);
-
         $assetId     = $this->generateAssetId();
         $pathBuilder = new OriginalStoragePathBuilder();
         $storagePath = $pathBuilder->build($tenantId, $collectionKey, $assetId, $mimeType);
@@ -163,6 +160,7 @@ final class MediaIngestService
         // Copy to canonical media path
         $this->storage->put($storagePath, $contents, $mimeType);
         $this->removeIfRolledBack($storagePath);
+        $this->reserveOrRemove($tenantId, $collection, $metadata->byteSize, $storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -273,6 +271,26 @@ final class MediaIngestService
      * rolls back: the asset row went with the rollback, and the file stayed in
      * storage for good, referenced by nothing.
      */
+    /**
+     * The quota is taken after the upload is stored: taken before, the
+     * tenant's quota row stayed locked, inside a caller's transaction, through
+     * the whole storage write (an S3 PUT), and every other upload of the
+     * tenant waited on it. Over the quota, the stored file is removed.
+     */
+    private function reserveOrRemove(string $tenantId, MediaCollection $collection, int $byteSize, string $storagePath): void
+    {
+        try {
+            $this->quotaManager->checkAndReserve($tenantId, $collection, $byteSize);
+        } catch (\Throwable $e) {
+            try {
+                $this->storage->delete($storagePath);
+            } catch (\Throwable) {
+                // Its rollback work (removeIfRolledBack) tries again, if any.
+            }
+            throw $e;
+        }
+    }
+
     private function removeIfRolledBack(string $storagePath): void
     {
         if (!isset($this->orm)) {

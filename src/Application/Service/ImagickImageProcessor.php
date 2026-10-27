@@ -238,8 +238,13 @@ final class ImagickImageProcessor implements ImageProcessorInterface
         }
     }
 
-    /** Image types by their signature, read by PHP itself: no ImageMagick decoder has seen the bytes yet. */
-    private const WEB_RASTER_TYPES = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP, IMAGETYPE_AVIF, IMAGETYPE_BMP, IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM];
+    /**
+     * Image types by their signature, read by PHP itself: no ImageMagick
+     * decoder has seen the bytes yet. The ones the image's ImageMagick reads
+     * and its policy.xml allows: TIFF was listed, and the image has no TIFF
+     * coder, so a TIFF passed here and failed in the decoder.
+     */
+    private const WEB_RASTER_TYPES = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP, IMAGETYPE_AVIF, IMAGETYPE_BMP];
 
     /**
      * ImageMagick picked a decoder by sniffing the bytes, among the 215 the
@@ -251,7 +256,7 @@ final class ImagickImageProcessor implements ImageProcessorInterface
     {
         $info = @getimagesizefromstring($bytes);
         if ($info === false || !in_array($info[2], self::WEB_RASTER_TYPES, true)) {
-            throw new MediaProcessingException('Not an image in a supported format (JPEG, PNG, GIF, WebP, AVIF, BMP or TIFF).');
+            throw new MediaProcessingException('Not an image in a supported format (JPEG, PNG, GIF, WebP, AVIF or BMP).');
         }
     }
 
