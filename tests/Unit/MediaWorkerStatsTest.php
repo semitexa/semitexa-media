@@ -77,6 +77,12 @@ final class MediaWorkerStatsTest extends TestCase
             public function findByAssetId(string $assetId): array { return []; }
             public function save(MediaVariant $entity): MediaVariant { return $entity; }
             public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant { return null; }
+            public function claim(string $variantId, string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant
+            {
+                return new MediaVariant($variantId, 't1', 'a1', 'thumb', MediaVariantStatus::Processing->value);
+            }
+            public function markReadyIfOwned(string $variantId, string $leaseOwner, string $storagePath, string $mimeType, int $byteSize, int $width, int $height): bool { return true; }
+            public function markFailedIfOwned(string $variantId, string $leaseOwner, string $errorCode, string $errorMessage): bool { return true; }
             public function findFailed(int $limit = 100): array { return []; }
             public function findFailedByAssetId(string $assetId): array { return []; }
         };

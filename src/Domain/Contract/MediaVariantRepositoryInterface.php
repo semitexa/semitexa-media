@@ -27,6 +27,18 @@ interface MediaVariantRepositoryInterface
      */
     public function claimNext(string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant;
 
+    /** Claim this variant for $leaseOwner, or null when another worker holds it, it is ready, or out of attempts. */
+    public function claim(string $variantId, string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant;
+
+    /**
+     * Ready, while $leaseOwner still holds it; false when another worker took
+     * it over meanwhile (its own outcome stands).
+     */
+    public function markReadyIfOwned(string $variantId, string $leaseOwner, string $storagePath, string $mimeType, int $byteSize, int $width, int $height): bool;
+
+    /** Failed, while $leaseOwner still holds it; false when another worker took it over meanwhile. */
+    public function markFailedIfOwned(string $variantId, string $leaseOwner, string $errorCode, string $errorMessage): bool;
+
     /**
      * @return MediaVariant[]
      */
