@@ -6,6 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Orm\OrmManager;
 use Semitexa\Core\Log\LoggerInterface;
 use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Configuration\MediaConfig;
@@ -23,6 +24,9 @@ final class MediaIngestService
 {
     #[InjectAsReadonly]
     protected MediaConfig $config;
+
+    #[InjectAsReadonly(optional: true)]
+    protected OrmManager $orm;
 
     #[InjectAsReadonly]
     protected MediaCollectionPolicyResolver $collectionResolver;
@@ -80,6 +84,7 @@ final class MediaIngestService
         $storagePath  = $pathBuilder->build($tenantId, $collectionKey, $assetId, $mimeType);
 
         $this->storage->put($storagePath, $contents, $mimeType);
+        $this->removeIfRolledBack($storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -157,6 +162,7 @@ final class MediaIngestService
 
         // Copy to canonical media path
         $this->storage->put($storagePath, $contents, $mimeType);
+        $this->removeIfRolledBack($storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -260,6 +266,21 @@ final class MediaIngestService
             'status' => MediaAssetStatus::Ready->value,
             'readyAt' => new \DateTimeImmutable(),
         ]));
+    }
+
+    /**
+     * Inside the caller's transaction, the stored original goes again if it
+     * rolls back: the asset row went with the rollback, and the file stayed in
+     * storage for good, referenced by nothing.
+     */
+    private function removeIfRolledBack(string $storagePath): void
+    {
+        if (!isset($this->orm)) {
+            return;
+        }
+        $this->orm->getTransactionManager()->afterRollback(function () use ($storagePath): void {
+            $this->storage->delete($storagePath);
+        });
     }
 
     private function generateAssetId(): string
