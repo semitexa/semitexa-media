@@ -179,7 +179,10 @@ final class MediaWorker
 
             return true;
         } catch (\Throwable $e) {
-            $this->log("Could not look at the variant again later: {$e->getMessage()}", 'warning');
+            // Hides a failed delayed publish: the caller skips the message and
+            // the transport acks it, so if the lease holder has died nothing
+            // queues the variant again until media:drain reclaims it. Hence error.
+            $this->log('Could not republish the variant message for later, it is dropped (' . $e::class . '): ' . $e->getMessage(), 'error');
 
             return false;
         }

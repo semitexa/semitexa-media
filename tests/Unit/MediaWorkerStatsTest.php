@@ -72,11 +72,16 @@ final class MediaWorkerStatsTest extends TestCase
             (new \ReflectionProperty(MediaWorker::class, $name))->setValue($worker, $value);
         }
 
+        // Caught, not failed inside the try: PHPUnit's AssertionFailedError is
+        // a RuntimeException too, and a swallowed error would have passed.
+        $thrown = null;
         try {
             $worker->processPayload((new QueuedMediaTransformMessage('boom', 'thumb', 't1'))->toJson());
-            self::fail('the error goes on to the transport');
-        } catch (\RuntimeException) {
+        } catch (\RuntimeException $e) {
+            $thrown = $e;
         }
+
+        self::assertSame('database gone', $thrown?->getMessage(), 'the error goes on to the transport');
 
         self::assertSame(1, $store->added[0]['retried'] ?? null, 'the transport hands it back: not lost');
         self::assertArrayNotHasKey('dead_lettered', $store->added[0]);

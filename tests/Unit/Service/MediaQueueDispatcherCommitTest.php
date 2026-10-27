@@ -26,6 +26,11 @@ final class MediaQueueDispatcherCommitTest extends TestCase
     public function a_variant_message_leaves_once_the_transaction_commits_and_never_after_a_rollback(): void
     {
         $published = new \ArrayObject();
+        // Put back, not cleared, at the end: what was registered before is there for the tests after.
+        $registry = [];
+        foreach ((new \ReflectionClass(QueueTransportRegistry::class))->getProperties(\ReflectionProperty::IS_STATIC) as $property) {
+            $registry[$property->getName()] = $property->getValue();
+        }
         QueueTransportRegistry::reset();
         QueueTransportRegistry::register('test-broker', new class ($published) implements QueueTransportFactoryInterface {
             public function __construct(private \ArrayObject $published) {}
@@ -67,7 +72,9 @@ final class MediaQueueDispatcherCommitTest extends TestCase
             $dispatcher->dispatch('a1', $variant);
             self::assertCount(2, $published, 'outside a transaction it goes at once');
         } finally {
-            QueueTransportRegistry::reset();
+            foreach ($registry as $name => $value) {
+                (new \ReflectionProperty(QueueTransportRegistry::class, $name))->setValue(null, $value);
+            }
         }
     }
 }
