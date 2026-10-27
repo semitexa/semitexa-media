@@ -56,11 +56,40 @@ final class MediaWorkerStatsTest extends TestCase
         self::assertSame(1, $store->added[0]['run_count']);
     }
 
+    /** Thrown past the variant's own handling, a message counted nothing. */
+    #[Test]
+    public function a_message_whose_processing_throws_is_counted_and_the_error_kept(): void
+    {
+        $store = new class implements QueueStatsStoreInterface {
+            /** @var list<array<string, int|string>> */
+            public array $added = [];
+            public function add(string $queue, int $minute, array $deltas): void { $this->added[] = ['queue' => $queue] + $deltas; }
+            public function sum(string $queue, int $fromMinute, int $toMinute): array { return []; }
+            public function describe(): string { return 'test'; }
+        };
+        $worker = $this->worker();
+        foreach (['stats' => new QueueStatsRecorder($store), 'statsResolved' => true, 'currentQueue' => 'media'] as $name => $value) {
+            (new \ReflectionProperty(MediaWorker::class, $name))->setValue($worker, $value);
+        }
+
+        try {
+            $worker->processPayload((new QueuedMediaTransformMessage('boom', 'thumb', 't1'))->toJson());
+            self::fail('the error goes on to the transport');
+        } catch (\RuntimeException) {
+        }
+
+        self::assertSame(1, $store->added[0]['dead_lettered'] ?? null);
+    }
+
     private function worker(): MediaWorker
     {
         $assets = new class implements MediaAssetRepositoryInterface {
             public function findById(string $id): ?MediaAsset
             {
+                if ($id === 'boom') {
+                    throw new \RuntimeException('database gone');
+                }
+
                 return $id === 'a1' ? new MediaAsset('a1', 't1', 'no-such-collection', 'local', 'a1.jpg', 'a1.jpg', 'image/jpeg', 'image', 'private', 'ready', 10, 'sha') : null;
             }
             public function save(MediaAsset $entity): MediaAsset { return $entity; }

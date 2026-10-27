@@ -127,7 +127,14 @@ final class MediaWorker
         }
 
         $startedAt = microtime(true);
-        $done = $this->processMessage($message, $payload);
+        try {
+            $done = $this->processMessage($message, $payload);
+        } catch (\Throwable $e) {
+            // Thrown past the variant's own handling (its database, the queue):
+            // nothing counted it, and queue:stats showed a worker doing nothing.
+            $this->recordStats(false, $startedAt);
+            throw $e;
+        }
         $this->recordStats($done, $startedAt);
     }
 
