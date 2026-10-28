@@ -78,6 +78,53 @@ final class MediaVariantLeaseTest extends TestCase
         self::assertSame('worker-a', $this->row('v-1')['lease_owner']);
     }
 
+    /** A redelivered message: read and saved unconditionally, both workers generated the variant. */
+    #[Test]
+    public function a_variant_named_by_a_message_is_claimed_by_one_worker_only(): void
+    {
+        $this->seed('v-1', queuedAt: '2026-09-05 10:00:00');
+        $second = new MediaVariantRepository();
+        (new \ReflectionProperty(MediaVariantRepository::class, 'orm'))->setValue($second, $this->orm);
+
+        self::assertSame('v-1', $this->idOf($this->repository->claim('v-1', 'worker-a')));
+        self::assertNull($second->claim('v-1', 'worker-b'), 'the lease is live');
+        self::assertSame('worker-a', $this->row('v-1')['lease_owner']);
+
+        $this->orm->getAdapter()->execute("UPDATE media_variants SET status = 'ready', lease_owner = NULL WHERE id = 'v-1'");
+        self::assertNull($second->claim('v-1', 'worker-b'), 'a ready variant is not made again');
+    }
+
+    /** A domain variant carries its UUID as text; BINARY(16) never equalled it, and nothing was claimed. */
+    #[Test]
+    public function a_variant_saved_with_a_uuid_is_claimed_and_marked_by_its_uuid(): void
+    {
+        $saved = $this->repository->save(new MediaVariant('', 't1', 'a1', 'thumb', 'queued'));
+        self::assertMatchesRegularExpression('/\A[0-9a-f-]{36}\z/', $saved->getId());
+
+        $claimed = $this->repository->claim($saved->getId(), 'worker-a');
+        self::assertNotNull($claimed);
+        self::assertFalse($this->repository->markFailedIfOwned($saved->getId(), 'worker-b', 'x', 'not its lease'));
+        self::assertTrue($this->repository->markReadyIfOwned($saved->getId(), 'worker-a', 'p/thumb.webp', 'image/webp', 10, 1, 1));
+        self::assertSame('ready', $this->repository->findByAssetAndKey('a1', 'thumb')?->getStatus());
+    }
+
+    /** claim() by id: a failed variant is retried, an expired lease taken over, a spent budget refused. */
+    #[Test]
+    public function a_variant_named_by_a_message_is_claimed_when_failed_or_stranded_and_never_out_of_attempts(): void
+    {
+        $this->seed('v-failed', queuedAt: '2026-09-05 10:00:00', status: 'failed', attemptCount: 1);
+        $this->seed('v-stranded', queuedAt: '2026-09-05 10:00:00', status: 'processing',
+            leaseOwner: 'worker-dead', leaseExpiresAt: '2020-01-01 00:00:00', attemptCount: 1);
+        $this->seed('v-spent', queuedAt: '2026-09-05 10:00:00', status: 'failed', attemptCount: 3, maxAttempts: 3);
+
+        self::assertSame('worker-a', $this->repository->claim('v-failed', 'worker-a')?->getLeaseOwner());
+        self::assertSame(['processing', 2], [$this->row('v-failed')['status'], (int) $this->row('v-failed')['attempt_count']]);
+        self::assertSame('worker-b', $this->repository->claim('v-stranded', 'worker-b')?->getLeaseOwner());
+        self::assertSame(['worker-b', 2], [$this->row('v-stranded')['lease_owner'], (int) $this->row('v-stranded')['attempt_count']]);
+        self::assertNull($this->repository->claim('v-spent', 'worker-a'));
+        self::assertSame(['failed', null, 3], [$this->row('v-spent')['status'], $this->row('v-spent')['lease_owner'], (int) $this->row('v-spent')['attempt_count']]);
+    }
+
     #[Test]
     public function the_oldest_queued_variant_goes_first(): void
     {

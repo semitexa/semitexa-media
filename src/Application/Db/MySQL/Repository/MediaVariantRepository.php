@@ -10,6 +10,7 @@ use Semitexa\Media\Application\Db\MySQL\Model\MediaVariantResource;
 use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Orm\OrmManager;
+use Semitexa\Orm\Application\Service\Uuid7;
 use Semitexa\Orm\Query\Operator;
 use Semitexa\Orm\Query\SystemScopeToken;
 use Semitexa\Orm\Repository\DomainRepository;
@@ -129,6 +130,78 @@ class MediaVariantRepository extends AbstractMediaRepository implements MediaVar
         }
 
         return null;
+    }
+
+    public function claim(string $variantId, string $leaseOwner, int $leaseDurationSeconds = 300): ?MediaVariant
+    {
+        $now = date('Y-m-d H:i:s');
+        // The same predicates as claimNext(), and failed too: a queued message
+        // is how a failed variant is retried. Read and saved unconditionally,
+        // two workers on one redelivered message both generated the variant.
+        $claimed = $this->adapter()->execute(
+            "UPDATE media_variants
+             SET status = 'processing',
+                 lease_owner = :lease_owner,
+                 lease_expires_at = :lease_expires_at,
+                 last_attempt_at = :now_attempt,
+                 attempt_count = attempt_count + 1,
+                 processing_started_at = CASE WHEN processing_started_at IS NULL THEN :now_started ELSE processing_started_at END
+             WHERE id = :id
+               AND (status IN ('queued', 'failed') OR (status = 'processing' AND lease_expires_at < :now_stale))
+               AND attempt_count < max_attempts",
+            [
+                'lease_owner' => $leaseOwner,
+                'lease_expires_at' => date('Y-m-d H:i:s', time() + $leaseDurationSeconds),
+                'now_attempt' => $now,
+                'now_started' => $now,
+                'id' => self::idParam($variantId),
+                'now_stale' => $now,
+            ],
+        );
+        if ($claimed->rowCount === 0) {
+            return null;
+        }
+
+        /** @var MediaVariant|null */
+        return $this->system()->query()
+            ->where(MediaVariantResource::column('id'), Operator::Equals, $variantId)
+            ->fetchOneAs(MediaVariant::class, $this->orm()->getMapperRegistry());
+    }
+
+    public function markReadyIfOwned(string $variantId, string $leaseOwner, string $storagePath, string $mimeType, int $byteSize, int $width, int $height): bool
+    {
+        return $this->adapter()->execute(
+            "UPDATE media_variants
+             SET status = 'ready', storage_path = :storage_path, mime_type = :mime_type, byte_size = :byte_size,
+                 actual_width = :width, actual_height = :height, generated_at = :now,
+                 lease_owner = NULL, lease_expires_at = NULL, error_code = NULL, error_message = NULL
+             WHERE id = :id AND lease_owner = :owner AND status = 'processing'",
+            [
+                'storage_path' => $storagePath, 'mime_type' => $mimeType, 'byte_size' => $byteSize,
+                'width' => $width, 'height' => $height, 'now' => date('Y-m-d H:i:s'),
+                'id' => self::idParam($variantId), 'owner' => $leaseOwner,
+            ],
+        )->rowCount === 1;
+    }
+
+    public function markFailedIfOwned(string $variantId, string $leaseOwner, string $errorCode, string $errorMessage): bool
+    {
+        return $this->adapter()->execute(
+            "UPDATE media_variants
+             SET status = 'failed', error_code = :error_code, error_message = :error_message,
+                 lease_owner = NULL, lease_expires_at = NULL
+             WHERE id = :id AND lease_owner = :owner AND status = 'processing'",
+            ['error_code' => $errorCode, 'error_message' => $errorMessage, 'id' => self::idParam($variantId), 'owner' => $leaseOwner],
+        )->rowCount === 1;
+    }
+
+    /**
+     * The id as the column keeps it: a domain variant carries its UUID as
+     * text, and BINARY(16) never equals that text (nothing was claimed).
+     */
+    private static function idParam(string $id): string
+    {
+        return strlen($id) === 36 && substr_count($id, '-') === 4 ? Uuid7::toBytes($id) : $id;
     }
 
     public function findFailed(int $limit = 100): array

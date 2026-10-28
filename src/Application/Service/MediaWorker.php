@@ -13,7 +13,10 @@ use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\QueuedMediaTransformMessage;
+use Semitexa\Core\Queue\DelayedQueueTransportInterface;
 use Semitexa\Core\Queue\QueueConfig;
+use Semitexa\Core\Queue\QueueStatsRecorder;
+use Semitexa\Core\Queue\QueueStopSignals;
 use Semitexa\Core\Queue\QueueTransportRegistry;
 use Semitexa\Tenancy\Application\Service\TenantAwareJobSerializer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -37,6 +40,9 @@ final class MediaWorker
     protected MediaTransformationService $transformationService;
 
     private ?string $currentTransport = null;
+    private ?string $currentQueue = null;
+    private ?QueueStatsRecorder $stats = null;
+    private bool $statsResolved = false;
     private ?OutputInterface $output = null;
     private string $workerId = '';
 
@@ -50,8 +56,10 @@ final class MediaWorker
         $this->initializeWorkerId();
         $this->currentTransport = $transportName ?: QueueConfig::defaultTransport();
         $queue = $queueName ?: $this->config->workerQueue();
+        $this->currentQueue = $queue;
 
         $transport = QueueTransportRegistry::create($this->currentTransport);
+        QueueStopSignals::install($transport, fn (string $message) => $this->log($message));
 
         $this->log("Media worker started (transport={$this->currentTransport}, queue={$queue}, worker={$this->workerId})");
 
@@ -118,48 +126,116 @@ final class MediaWorker
             return;
         }
 
-        $this->processMessage($message);
+        $startedAt = microtime(true);
+        try {
+            $done = $this->processMessage($message, $payload);
+        } catch (\Throwable $e) {
+            // Thrown past the variant's own handling (its database, the queue):
+            // nothing counted it, and queue:stats showed a worker doing nothing.
+            // Retried, not lost: the transport hands it back.
+            $this->recordStats(false, $startedAt, retried: true);
+            throw $e;
+        }
+        $this->recordStats($done, $startedAt);
     }
 
-    private function processMessage(QueuedMediaTransformMessage $message): void
+    /**
+     * A variant made or failed, into the per-queue counters queue:work writes
+     * (queue:stats, the Queues app). A message skipped (its asset or variant
+     * gone, already ready, out of attempts) counts nothing; a failed variant
+     * is not retried, so it counts as dead-lettered. No wait: queuedAt has
+     * whole seconds, which would put every wait in the 1 s bucket.
+     */
+    private function recordStats(?bool $done, float $startedAt, bool $retried = false): void
+    {
+        if ($done === null || $this->currentQueue === null) {
+            return;
+        }
+        if (!$this->statsResolved) {
+            $this->statsResolved = true;
+            $this->stats = QueueStatsRecorder::fromEnvironment();
+        }
+        $this->stats?->record(
+            $this->currentQueue,
+            $done ? 'processed' : 'dead_lettered',
+            $retried,
+            null,
+            (int) round((microtime(true) - $startedAt) * 1000),
+        );
+    }
+
+    /** The message in hand again, $delay seconds later, where the transport can hold it back. */
+    private function republishLater(string $raw, int $delay): bool
+    {
+        if ($this->currentTransport === null || $this->currentQueue === null) {
+            return false;
+        }
+        try {
+            $transport = QueueTransportRegistry::create($this->currentTransport);
+            if (!$transport instanceof DelayedQueueTransportInterface) {
+                return false;
+            }
+            $transport->publishDelayed($this->currentQueue, $raw, $delay);
+
+            return true;
+        } catch (\Throwable $e) {
+            // Hides a failed delayed publish: the caller skips the message and
+            // the transport acks it, so if the lease holder has died nothing
+            // queues the variant again until media:drain reclaims it. Hence error.
+            $this->log('Could not republish the variant message for later, it is dropped (' . $e::class . '): ' . $e->getMessage(), 'error');
+
+            return false;
+        }
+    }
+
+    /**
+     * $raw: the message as it arrived (tenant wrapping included), to publish again.
+     *
+     * @return bool|null whether the variant was made; null when the message was skipped
+     */
+    private function processMessage(QueuedMediaTransformMessage $message, ?string $raw = null): ?bool
     {
         $this->initializeWorkerId();
         $asset = $this->assetRepository->findById($message->assetId);
 
         if ($asset === null) {
             $this->log("Asset '{$message->assetId}' not found — discarding variant '{$message->variantKey}'.", 'warning');
-            return;
+            return null;
         }
 
         $variant = $this->variantRepository->findByAssetAndKey($message->assetId, $message->variantKey);
 
         if ($variant === null) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' not found — discarding.", 'warning');
-            return;
+            return null;
         }
 
         if ($variant->getStatus() === MediaVariantStatus::Ready->value) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' already ready — skipping.", 'info');
-            return;
+            return null;
         }
 
         if ($variant->getAttemptCount() >= $variant->getMaxAttempts()) {
             $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' exceeded max attempts — skipping.", 'warning');
-            return;
+            return null;
         }
 
-        // Mark as processing (resources are readonly — continue with the row
-        // returned by save()).
-        $variant = $this->variantRepository->save($variant->with([
-            'status' => MediaVariantStatus::Processing->value,
-            'leaseOwner' => $this->workerId,
-            'leaseExpiresAt' => new \DateTimeImmutable('+5 minutes'),
-            'lastAttemptAt' => new \DateTimeImmutable(),
-            'attemptCount' => $variant->getAttemptCount() + 1,
-            'processingStartedAt' => $variant->getProcessingStartedAt() ?? new \DateTimeImmutable(),
-        ]));
+        // Claimed, not saved: two workers on one redelivered message both read
+        // it as not ready, both saved it processing, and both generated it.
+        $claimed = $this->variantRepository->claim($variant->getId(), $this->workerId, 300);
+        if ($claimed === null) {
+            // Its holder may have died with it: dropped, the variant stayed
+            // processing for good. Looked at again once the lease has run out.
+            // Read again: two duplicates both read it queued, and the loser skipped
+            // without looking again while the winner might yet die.
+            $now = $this->variantRepository->findByAssetAndKey($message->assetId, $message->variantKey) ?? $variant;
+            $leaseLeft = $now->getLeaseExpiresAt() !== null ? $now->getLeaseExpiresAt()->getTimestamp() - time() : 0;
+            $later = $now->getStatus() === MediaVariantStatus::Processing->value && $raw !== null && $this->republishLater($raw, max(1, $leaseLeft) + 5);
+            $this->log("Variant '{$message->variantKey}' for asset '{$message->assetId}' is being generated by another worker — " . ($later ? 'looking again after its lease.' : 'skipping.'), 'info');
+            return null;
+        }
 
-        $this->transformVariant($asset, $variant);
+        return $this->transformVariant($asset, $claimed);
     }
 
     /**
@@ -206,30 +282,18 @@ final class MediaWorker
 
     private function markVariantReady(MediaVariant $variant, \Semitexa\Media\Domain\Model\VariantGenerationResult $result): void
     {
-        $this->variantRepository->save($variant->with([
-            'status' => MediaVariantStatus::Ready->value,
-            'storagePath' => $result->storagePath,
-            'mimeType' => $result->mimeType,
-            'byteSize' => $result->byteSize,
-            'actualWidth' => $result->actualWidth,
-            'actualHeight' => $result->actualHeight,
-            'generatedAt' => new \DateTimeImmutable(),
-            'leaseOwner' => null,
-            'leaseExpiresAt' => null,
-            'errorCode' => null,
-            'errorMessage' => null,
-        ]));
+        // Only while this worker still holds it: saved whole, a worker whose
+        // lease ran out overwrote the outcome of the one that took it over.
+        if (!$this->variantRepository->markReadyIfOwned($variant->getId(), (string) $variant->getLeaseOwner(), (string) $result->storagePath, (string) $result->mimeType, (int) $result->byteSize, (int) $result->actualWidth, (int) $result->actualHeight)) {
+            $this->log("Variant '{$variant->getVariantKey()}' for asset '{$variant->getMediaAssetId()}' was taken over by another worker; its outcome stands.", 'warning');
+        }
     }
 
     private function failVariant(MediaVariant $variant, string $errorCode, string $errorMessage): void
     {
-        $this->variantRepository->save($variant->with([
-            'status' => MediaVariantStatus::Failed->value,
-            'errorCode' => $errorCode,
-            'errorMessage' => $errorMessage,
-            'leaseOwner' => null,
-            'leaseExpiresAt' => null,
-        ]));
+        if (!$this->variantRepository->markFailedIfOwned($variant->getId(), (string) $variant->getLeaseOwner(), $errorCode, $errorMessage)) {
+            $this->log("Variant '{$variant->getVariantKey()}' for asset '{$variant->getMediaAssetId()}' was taken over by another worker; its outcome stands.", 'warning');
+        }
     }
 
     private function log(string $message, string $level = 'info'): void

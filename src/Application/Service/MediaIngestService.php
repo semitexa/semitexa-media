@@ -6,6 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Orm\OrmManager;
 use Semitexa\Core\Log\LoggerInterface;
 use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Configuration\MediaConfig;
@@ -23,6 +24,9 @@ final class MediaIngestService
 {
     #[InjectAsReadonly]
     protected MediaConfig $config;
+
+    #[InjectAsReadonly(optional: true)]
+    protected OrmManager $orm;
 
     #[InjectAsReadonly]
     protected MediaCollectionPolicyResolver $collectionResolver;
@@ -69,16 +73,17 @@ final class MediaIngestService
         $this->validateByteSize(strlen($contents), $collection);
 
         $metadata = $this->metadataExtractor->extract($contents, $mimeType);
+        $this->assertBytesAreTheDeclaredType($metadata->mimeType, $mimeType);
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
-
-        $this->quotaManager->checkAndReserve($tenantId, $collection, $metadata->byteSize);
 
         $pathBuilder  = new OriginalStoragePathBuilder();
         $assetId      = $this->generateAssetId();
         $storagePath  = $pathBuilder->build($tenantId, $collectionKey, $assetId, $mimeType);
 
         $this->storage->put($storagePath, $contents, $mimeType);
+        $this->removeIfRolledBack($storagePath);
+        $this->reserveOrRemove($tenantId, $collection, $metadata->byteSize, $storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -144,10 +149,9 @@ final class MediaIngestService
         $this->validateByteSize(strlen($contents), $collection);
 
         $metadata = $this->metadataExtractor->extract($contents, $mimeType);
+        $this->assertBytesAreTheDeclaredType($metadata->mimeType, $mimeType);
 
         $this->validateDimensions($metadata->width, $metadata->height, $collection);
-
-        $this->quotaManager->checkAndReserve($tenantId, $collection, $metadata->byteSize);
 
         $assetId     = $this->generateAssetId();
         $pathBuilder = new OriginalStoragePathBuilder();
@@ -155,6 +159,8 @@ final class MediaIngestService
 
         // Copy to canonical media path
         $this->storage->put($storagePath, $contents, $mimeType);
+        $this->removeIfRolledBack($storagePath);
+        $this->reserveOrRemove($tenantId, $collection, $metadata->byteSize, $storagePath);
 
         $resource = $this->assetFactory->createFromUpload(
             metadata:        $metadata,
@@ -196,6 +202,29 @@ final class MediaIngestService
         );
     }
 
+    /**
+     * The type the bytes are, not only the one declared: an upload said
+     * image/jpeg and was whatever it was, stored and served as declared.
+     */
+    private function assertBytesAreTheDeclaredType(string $detected, string $declared): void
+    {
+        if (self::canonicalMime($detected) !== self::canonicalMime($declared)) {
+            throw new MediaIngestException("The file was declared '{$declared}' but is '{$detected}'.");
+        }
+    }
+
+    private static function canonicalMime(string $mimeType): string
+    {
+        $mimeType = strtolower(trim(explode(';', $mimeType, 2)[0]));
+
+        return match ($mimeType) {
+            'image/jpg', 'image/pjpeg' => 'image/jpeg',
+            'image/x-png' => 'image/png',
+            'image/x-ms-bmp', 'image/x-bmp' => 'image/bmp',
+            default => $mimeType,
+        };
+    }
+
     private function validateMimeType(string $mimeType, MediaCollection $collection): void
     {
         if (!$collection->isMimeTypeAllowed($mimeType)) {
@@ -235,6 +264,41 @@ final class MediaIngestService
             'status' => MediaAssetStatus::Ready->value,
             'readyAt' => new \DateTimeImmutable(),
         ]));
+    }
+
+    /**
+     * Inside the caller's transaction, the stored original goes again if it
+     * rolls back: the asset row went with the rollback, and the file stayed in
+     * storage for good, referenced by nothing.
+     */
+    /**
+     * The quota is taken after the upload is stored: taken before, the
+     * tenant's quota row stayed locked, inside a caller's transaction, through
+     * the whole storage write (an S3 PUT), and every other upload of the
+     * tenant waited on it. Over the quota, the stored file is removed.
+     */
+    private function reserveOrRemove(string $tenantId, MediaCollection $collection, int $byteSize, string $storagePath): void
+    {
+        try {
+            $this->quotaManager->checkAndReserve($tenantId, $collection, $byteSize);
+        } catch (\Throwable $e) {
+            try {
+                $this->storage->delete($storagePath);
+            } catch (\Throwable) {
+                // Its rollback work (removeIfRolledBack) tries again, if any.
+            }
+            throw $e;
+        }
+    }
+
+    private function removeIfRolledBack(string $storagePath): void
+    {
+        if (!isset($this->orm)) {
+            return;
+        }
+        $this->orm->getTransactionManager()->afterRollback(function () use ($storagePath): void {
+            $this->storage->delete($storagePath);
+        });
     }
 
     private function generateAssetId(): string
