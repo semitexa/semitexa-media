@@ -1,6 +1,6 @@
 {
     "name": "semitexa/media",
-    "description": "Semitexa Media — image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
+    "description": "Semitexa Media \u2014 image-first media asset management with async variants, tenant-aware quotas, and CDN-ready delivery URLs",
     "type": "semitexa-module",
     "license": "MIT",
     "authors": [
@@ -12,8 +12,8 @@
     "require": {
         "php": "^8.4",
         "ext-imagick": "*",
-        "semitexa/core": "*",
-        "semitexa/orm": "*",
+        "semitexa/core": ">=2026.10.29.1052 || dev-master",
+        "semitexa/orm": ">=2026.10.29.1052 || dev-master",
         "semitexa/storage": "*",
         "semitexa/tenancy": "*"
     },
@@ -34,8 +34,8 @@
         },
         "semitexa": {
             "floors": {
-                "semitexa/core": "next",
-                "semitexa/orm": "next"
+                "semitexa/core": "2026.10.29.1052",
+                "semitexa/orm": "2026.10.29.1052"
             }
         }
     },
