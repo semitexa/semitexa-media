@@ -43,7 +43,7 @@ final class MediaCollectionRegistry
     protected ClassDiscovery $classDiscovery;
 
     /** @var array<string, array<string, mixed>> */
-    #[WorkerState('Collection definitions keyed by collection key, loaded once from discovered #[AsMediaCollectionProvider] classes; declared in code, no request or tenant data.')]
+    #[WorkerState('Collection definitions keyed by collection key, loaded once from discovered #[AsMediaCollectionProvider] classes: declared in code, never from a request; a definition may name a tenantId, which is part of that code declaration.')]
     private array $definitions = [];
 
     private bool $providersLoaded = false;
