@@ -7,6 +7,7 @@ namespace Semitexa\Media\Application\Service;
 use Psr\Container\ContainerInterface;
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Attribute\WorkerState;
 use Semitexa\Core\Discovery\ClassDiscovery;
 use Semitexa\Media\Attribute\AsMediaCollectionProvider;
 use Semitexa\Media\Domain\Contract\MediaCollectionProviderInterface;
@@ -42,6 +43,7 @@ final class MediaCollectionRegistry
     protected ClassDiscovery $classDiscovery;
 
     /** @var array<string, array<string, mixed>> */
+    #[WorkerState('Collection definitions keyed by collection key: loaded once from discovered #[AsMediaCollectionProvider] classes, or passed to register() by code at worker start (for example a lifecycle listener); never per request. A definition may name a tenantId as part of that code declaration.')]
     private array $definitions = [];
 
     private bool $providersLoaded = false;
