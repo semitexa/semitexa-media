@@ -6,6 +6,7 @@ namespace Semitexa\Media\Application\Service;
 
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
+use Semitexa\Core\Attribute\WorkerState;
 use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
@@ -39,10 +40,12 @@ final class MediaWorker
     #[InjectAsReadonly]
     protected MediaTransformationService $transformationService;
 
+    #[WorkerState('Transport name of one media CLI worker process, set by run() from its command argument; no HTTP worker calls run().')]
     private ?string $currentTransport = null;
     private ?string $currentQueue = null;
     private ?QueueStatsRecorder $stats = null;
     private bool $statsResolved = false;
+    #[WorkerState('Console output of one media CLI process (media:work, media:drain, media:import); no HTTP worker calls setOutput().')]
     private ?OutputInterface $output = null;
     private string $workerId = '';
 
