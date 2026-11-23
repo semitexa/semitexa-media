@@ -110,14 +110,17 @@ final class MediaWorker
 
     public function processPayload(string $payload): void
     {
+        // Every message, an undecodable one too, ends in the reset below:
+        // state left by whatever ran before it must not reach the next one
+        // (review, semitexa-media#40).
         try {
-            $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\Throwable $e) {
-            $this->log("Failed to decode media queue message: {$e->getMessage()}", 'error');
-            return;
-        }
+            try {
+                $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\Throwable $e) {
+                $this->log("Failed to decode media queue message: {$e->getMessage()}", 'error');
+                return;
+            }
 
-        try {
             $data = TenantAwareJobSerializer::unwrapAndRestore($data);
 
             if (($data['type'] ?? '') !== QueuedMediaTransformMessage::TYPE) {

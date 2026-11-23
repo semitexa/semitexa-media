@@ -115,6 +115,24 @@ final class MediaWorkerTenantResetTest extends TestCase
         self::assertNull(TenantContext::get());
     }
 
+    /**
+     * A message that is not JSON returned before the reset: a tenant left by
+     * what ran before it, process bootstrap for one, reached the next message
+     * (review, semitexa-media#40).
+     */
+    #[Test]
+    public function an_undecodable_message_ends_in_the_reset_too(): void
+    {
+        TenantContextStore::shared()->set(TenantContext::fromResolution('tenant-z', 'test'));
+        self::assertSame('tenant-z', TenantContext::get()?->getTenantId(), 'a tenant is set before the message');
+
+        $worker = $this->createWithDependencies(MediaWorker::class, []);
+        $worker->setOutput(new NullOutput());
+        $worker->processPayload('{not json');
+
+        self::assertNull(TenantContext::get(), 'no tenant is left after an undecodable message');
+    }
+
     private function wrapped(QueuedMediaTransformMessage $message): string
     {
         return json_encode(TenantAwareJobSerializer::wrap($message->jsonSerialize()), JSON_THROW_ON_ERROR);
