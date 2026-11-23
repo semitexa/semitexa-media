@@ -17,6 +17,9 @@
         "semitexa/storage": "*",
         "semitexa/tenancy": "*"
     },
+    "require-dev": {
+        "semitexa/testing": "*"
+    },
     "autoload": {
         "psr-4": {
             "Semitexa\\Media\\": "src/"
