@@ -7,6 +7,8 @@ namespace Semitexa\Media\Application\Service;
 use Semitexa\Core\Attribute\AsService;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\WorkerState;
+use Semitexa\Core\Lifecycle\PerRequestStateRegistry;
+use Semitexa\Core\Support\CoroutineLocal;
 use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Media\Domain\Model\MediaVariant;
 use Semitexa\Media\Configuration\MediaConfig;
@@ -115,31 +117,41 @@ final class MediaWorker
             return;
         }
 
-        $data = TenantAwareJobSerializer::unwrapAndRestore($data);
-
-        if (($data['type'] ?? '') !== QueuedMediaTransformMessage::TYPE) {
-            $this->log("Unexpected message type '{$data['type']}' on media queue — skipping.", 'warning');
-            return;
-        }
-
         try {
-            $message = QueuedMediaTransformMessage::fromJson(json_encode($data, JSON_THROW_ON_ERROR));
-        } catch (\Throwable $e) {
-            $this->log("Failed to parse QueuedMediaTransformMessage: {$e->getMessage()}", 'error');
-            return;
-        }
+            $data = TenantAwareJobSerializer::unwrapAndRestore($data);
 
-        $startedAt = microtime(true);
-        try {
-            $done = $this->processMessage($message, $payload);
-        } catch (\Throwable $e) {
-            // Thrown past the variant's own handling (its database, the queue):
-            // nothing counted it, and queue:stats showed a worker doing nothing.
-            // Retried, not lost: the transport hands it back.
-            $this->recordStats(false, $startedAt, retried: true);
-            throw $e;
+            if (($data['type'] ?? '') !== QueuedMediaTransformMessage::TYPE) {
+                $this->log("Unexpected message type '{$data['type']}' on media queue — skipping.", 'warning');
+                return;
+            }
+
+            try {
+                $message = QueuedMediaTransformMessage::fromJson(json_encode($data, JSON_THROW_ON_ERROR));
+            } catch (\Throwable $e) {
+                $this->log("Failed to parse QueuedMediaTransformMessage: {$e->getMessage()}", 'error');
+                return;
+            }
+
+            $startedAt = microtime(true);
+            try {
+                $done = $this->processMessage($message, $payload);
+            } catch (\Throwable $e) {
+                // Thrown past the variant's own handling (its database, the queue):
+                // nothing counted it, and queue:stats showed a worker doing nothing.
+                // Retried, not lost: the transport hands it back.
+                $this->recordStats(false, $startedAt, retried: true);
+                throw $e;
+            }
+            $this->recordStats($done, $startedAt);
+        } finally {
+            // Per-message reset, the contract QueueWorker::processPayload keeps.
+            // A message queued in the default tenant carries no `_tenant` key,
+            // so unwrapAndRestore() sets nothing for it: without this its job
+            // ran in the tenant the message before had restored. The CLI store
+            // goes with it: what a job's services keep there is per job too.
+            PerRequestStateRegistry::resetAll();
+            CoroutineLocal::endRequest();
         }
-        $this->recordStats($done, $startedAt);
     }
 
     /**
