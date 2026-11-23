@@ -32,7 +32,9 @@ final class MediaRegenerateCollectionTest extends TestCase
             $this->source(),
             'MediaAsset::$id is private; the id must be read through getId()',
         );
-        self::assertStringContainsString('$asset->getId()', $this->source());
+        // The branch hands the asset itself to the regenerator now, so it
+        // reads no id at all; MediaRegenerationTenantScopeTest runs it.
+        self::assertStringContainsString('$this->regenerator->requeue($asset, $variantKey)', $this->source());
     }
 
     /**
@@ -54,7 +56,7 @@ final class MediaRegenerateCollectionTest extends TestCase
 
         sort($injected);
 
-        self::assertSame(['assetRepository', 'mediaService'], $injected);
+        self::assertSame(['assetRepository', 'regenerator'], $injected);
         self::assertStringNotContainsString('ContainerFactory', $this->source());
     }
 

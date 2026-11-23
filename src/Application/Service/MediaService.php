@@ -7,8 +7,6 @@ namespace Semitexa\Media\Application\Service;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Attribute\SatisfiesServiceContract;
 use Semitexa\Media\Domain\Contract\MediaServiceInterface;
-use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
-use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\MediaAssetReference;
 use Semitexa\Media\Domain\Model\MediaObjectContents;
 use Semitexa\Storage\Contract\StorageObjectStoreInterface;
@@ -31,10 +29,7 @@ final class MediaService implements MediaServiceInterface
     protected StorageObjectStoreInterface $storage;
 
     #[InjectAsReadonly]
-    protected MediaVariantRepositoryInterface $variantRepository;
-
-    #[InjectAsReadonly]
-    protected MediaQueueDispatcher $queueDispatcher;
+    protected MediaVariantRegenerator $regenerator;
 
     #[InjectAsReadonly]
     protected MediaVariantPlanner $variantPlanner;
@@ -110,23 +105,17 @@ final class MediaService implements MediaServiceInterface
 
     public function queueRegeneration(string $assetId, ?string $variantKey = null): void
     {
-        $variants = $variantKey !== null
-            ? array_filter(
-                [$this->variantRepository->findByAssetAndKey($assetId, $variantKey)],
-                static fn ($v) => $v !== null,
-            )
-            : $this->variantRepository->findByAssetId($assetId);
+        // The asset first, through the locator: that lookup is the
+        // authorization. The variant repository works under system scope, so
+        // going to it with a bare id would reset whoever's variants the id
+        // names. Another tenant's asset is answered like an unknown one.
+        $asset = $this->objectLocator->ownedAsset($assetId);
 
-        foreach ($variants as $variant) {
-            // Reset to queued (readonly resource — dispatch the saved row).
-            $variant = $this->variantRepository->save($variant->with([
-                'status' => MediaVariantStatus::Queued->value,
-                'queuedAt' => new \DateTimeImmutable(),
-                'errorCode' => null,
-                'errorMessage' => null,
-            ]));
-            $this->queueDispatcher->dispatch($assetId, $variant);
+        if ($asset === null) {
+            return;
         }
+
+        $this->regenerator->requeue($asset, $variantKey);
     }
 
     private function resolveTenantId(): string

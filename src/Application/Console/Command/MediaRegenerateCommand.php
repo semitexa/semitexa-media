@@ -7,8 +7,8 @@ namespace Semitexa\Media\Application\Console\Command;
 use Semitexa\Core\Attribute\AsCommand;
 use Semitexa\Core\Attribute\InjectAsReadonly;
 use Semitexa\Core\Console\BaseCommand;
+use Semitexa\Media\Application\Service\MediaVariantRegenerator;
 use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
-use Semitexa\Media\Domain\Contract\MediaServiceInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,8 +19,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'media:regenerate', description: 'Queue variant regeneration for one asset or all assets in a collection')]
 final class MediaRegenerateCommand extends BaseCommand
 {
+    /**
+     * The regenerator itself, not MediaServiceInterface::queueRegeneration():
+     * that one answers for the caller's tenant, and a console has none, so it
+     * would refuse every tenant-owned asset. The operator acts as system, and
+     * says so by loading the asset here and handing over the row.
+     */
     #[InjectAsReadonly]
-    protected MediaServiceInterface $mediaService;
+    protected MediaVariantRegenerator $regenerator;
 
     #[InjectAsReadonly]
     protected MediaAssetRepositoryInterface $assetRepository;
@@ -64,24 +70,32 @@ final class MediaRegenerateCommand extends BaseCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io         = new SymfonyStyle($input, $output);
-        $assetId    = $input->getArgument('asset-id');
-        $variantKey = $input->getOption('variant');
-        $collection = $input->getOption('collection');
+        $assetId    = self::optionText($input->getArgument('asset-id'));
+        $variantKey = self::optionText($input->getOption('variant'));
+        $variantKey = $variantKey !== '' ? $variantKey : null;
+        $collection = self::optionText($input->getOption('collection'));
         $tenantId   = $input->getOption('tenant');
-        $batchSize  = (int) $input->getOption('batch');
+        $batchSize  = (int) self::optionText($input->getOption('batch'));
 
         $io->title('Media regeneration');
 
         try {
 
-            if ($assetId !== null) {
-                $this->mediaService->queueRegeneration($assetId, $variantKey);
-                $io->success("Queued regeneration for asset '{$assetId}'" . ($variantKey ? " variant '{$variantKey}'" : ' (all variants)'));
+            if ($assetId !== '') {
+                $asset = $this->assetRepository->findById($assetId);
+
+                if ($asset === null) {
+                    $io->error("Asset '{$assetId}' not found.");
+                    return Command::FAILURE;
+                }
+
+                $queued = $this->regenerator->requeue($asset, $variantKey);
+                $io->success("Queued regeneration of {$queued} variant(s) for asset '{$assetId}'" . ($variantKey !== null ? " variant '{$variantKey}'" : ' (all variants)'));
                 return Command::SUCCESS;
             }
 
-            if ($collection !== null) {
-                if ($tenantId === null) {
+            if ($collection !== '') {
+                if (!is_string($tenantId)) {
                     $io->error('--tenant is required when using --collection');
                     return Command::FAILURE;
                 }
@@ -90,7 +104,7 @@ final class MediaRegenerateCommand extends BaseCommand
 
                 $queued = 0;
                 foreach ($assets as $asset) {
-                    $this->mediaService->queueRegeneration($asset->getId(), $variantKey);
+                    $this->regenerator->requeue($asset, $variantKey);
                     $queued++;
                 }
 
