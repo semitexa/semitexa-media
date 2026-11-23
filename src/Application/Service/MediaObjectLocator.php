@@ -10,6 +10,7 @@ use Semitexa\Media\Domain\Contract\MediaAssetRepositoryInterface;
 use Semitexa\Media\Domain\Contract\MediaVariantRepositoryInterface;
 use Semitexa\Media\Domain\Enum\MediaVariantStatus;
 use Semitexa\Media\Domain\Model\LocatedMediaObject;
+use Semitexa\Media\Domain\Model\MediaAsset;
 use Semitexa\Tenancy\Context\CoroutineContextStore;
 
 /**
@@ -40,9 +41,9 @@ final class MediaObjectLocator
 
     public function locate(string $assetId, ?string $variantKey = null): ?LocatedMediaObject
     {
-        $asset = $this->assetRepository->findById($assetId);
+        $asset = $this->ownedAsset($assetId);
 
-        if ($asset === null || ($asset->getTenantId() ?? '') !== $this->currentTenantId()) {
+        if ($asset === null) {
             return null;
         }
 
@@ -72,6 +73,24 @@ final class MediaObjectLocator
             version: $asset->getReadyAt() ?? $asset->getCreatedAt(),
             collectionKey: $asset->getCollectionKey(),
         );
+    }
+
+    /**
+     * The asset, when it exists and is the caller's tenant's; null otherwise,
+     * with nothing to tell the two apart.
+     *
+     * The one place the rule is written. Anything that acts on an asset by id
+     * for a caller — reading it, regenerating it — starts here.
+     */
+    public function ownedAsset(string $assetId): ?MediaAsset
+    {
+        $asset = $this->assetRepository->findById($assetId);
+
+        if ($asset === null || ($asset->getTenantId() ?? '') !== $this->currentTenantId()) {
+            return null;
+        }
+
+        return $asset;
     }
 
     /**
